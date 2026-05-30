@@ -1,0 +1,125 @@
+import { state, tiles, boardInitialized, setTiles, setBoardInitialized } from './state';
+import { createBoard, floodReveal, revealArea, isBoardWon } from './components/board';
+import { UPGRADE_MAP } from './components/upgrades';
+import { formatMoney } from './save';
+import { renderBoard, refreshTile, getTileEl } from './renderer/renderer';
+import { updateMineCounter, updateHUD, updatePrestigeBar, showToast, setSmiley } from './hud';
+import { calcTileEarnings, earnMoney } from './components/money';
+import { startGameTimer, stopGameTimer } from './helper/timers';
+
+// ============================================================
+//  TILE INTERACTION
+// ============================================================
+
+// Injected from toolbar.ts to avoid circular deps
+let _getFlagMode: () => boolean = () => false;
+export function setFlagModeGetter(fn: () => boolean) { _getFlagMode = fn; }
+
+// Injected from game.ts (newGame lives there to avoid circular deps)
+let _newGame: () => void = () => {};
+export function setNewGameCallback(fn: () => void) { _newGame = fn; }
+
+export function onTileClick(r: number, c: number) {
+  if (state.phase === 'won' || state.phase === 'lost') return;
+  const tile = tiles[r][c];
+  if (tile.isRevealed) return;
+
+  // Flag mode: tap toggles flag
+  if (_getFlagMode()) {
+    if (!boardInitialized) return;
+    tile.isFlagged = !tile.isFlagged;
+    refreshTile(r, c);
+    updateMineCounter();
+    return;
+  }
+
+  if (tile.isFlagged) return;
+
+  // First click: generate board (safe zone) and start timer
+  if (!boardInitialized) {
+    setTiles(createBoard(state.rows, state.cols, state.mineCount, r, c));
+    setBoardInitialized(true);
+    state.phase = 'playing';
+    startGameTimer();
+    renderBoard();
+  }
+
+  if (tiles[r][c].isMine) {
+    hitMine(r, c);
+    return;
+  }
+
+  const revealRadius = UPGRADE_MAP['reveal_area'].effect(state.upgrades.reveal_area);
+  const revealed = revealRadius > 1
+    ? revealArea(tiles, r, c, revealRadius, state.rows, state.cols)
+    : floodReveal(tiles, r, c, state.rows, state.cols);
+
+  earnMoney(calcTileEarnings(revealed.length));
+  revealed.forEach(([tr, tc]) => refreshTile(tr, tc));
+  checkWin();
+  updateMineCounter();
+}
+
+export function onTileRightClick(r: number, c: number) {
+  if (state.phase === 'won' || state.phase === 'lost') return;
+  if (!boardInitialized) return;
+  const tile = tiles[r][c];
+  if (tile.isRevealed) return;
+
+  tile.isFlagged = !tile.isFlagged;
+  refreshTile(r, c);
+  updateMineCounter();
+}
+
+// ============================================================
+//  MINE HIT
+// ============================================================
+
+function hitMine(r: number, c: number) {
+  state.phase = 'lost';
+  stopGameTimer();
+  setSmiley('😵');
+
+  for (let tr = 0; tr < state.rows; tr++) {
+    for (let tc = 0; tc < state.cols; tc++) {
+      if (tiles[tr][tc].isMine) {
+        tiles[tr][tc].isRevealed = true;
+        const el = getTileEl(tr, tc);
+        if (el) {
+          el.classList.add('revealed');
+          el.textContent = '💣';
+          if (tr === r && tc === c) el.classList.add('mine-hit');
+        }
+      }
+    }
+  }
+
+  showToast('💥 BOOM! Try again!');
+  setTimeout(() => _newGame(), 2000);
+}
+
+// ============================================================
+//  WIN CHECK
+// ============================================================
+
+export function checkWin() {
+  if (!isBoardWon(tiles, state.rows, state.cols, state.mineCount)) return;
+
+  state.phase = 'won';
+  stopGameTimer();
+  setSmiley('😎');
+
+  state.boardsCleared++;
+  state.boardNumber++;
+
+  const bonusMultiplier = UPGRADE_MAP['board_clear_bonus'].effect(state.upgrades.board_clear_bonus);
+  const base = state.mineCount * 20 * state.prestigeMultiplier;
+  const bonus = Math.floor(base * (bonusMultiplier + 1));
+
+  earnMoney(bonus);
+  showToast(`🏆 Board cleared! +${formatMoney(bonus)} bonus!`);
+
+  updateHUD();
+  updatePrestigeBar();
+  setTimeout(() => _newGame(), 1500);
+}

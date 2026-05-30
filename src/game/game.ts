@@ -1,0 +1,57 @@
+import { state, setTiles, setBoardInitialized } from './state';
+import { cacheDomRefs, smileyBtn, prestigeBtn } from './dom';
+import { UPGRADE_MAP } from './components/upgrades';
+import { renderBoard, setTileHandlers } from './renderer/renderer';
+import { onTileClick, onTileRightClick, setFlagModeGetter, setNewGameCallback } from './input';
+import { updateMineCounter, updateTimerDisplay, updateHUD, updatePrestigeBar } from './hud';
+import { updateUpgradesAffordability, renderUpgrades, setAutoMinerPausedGetterForUpgrades } from './renderer/upgrades-ui';
+import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMinerPausedGetter } from './helper/timers';
+import { stopGameTimer } from './helper/timers';
+import { prestige, setNewGameCallbackForPrestige } from './prestige';
+import { initToolbar, getFlagMode, getAutoMinerPaused } from './components/toolbar';
+
+// ============================================================
+//  GAME — thin orchestrator
+//  Wires all modules together. Contains only newGame() and init().
+// ============================================================
+
+export function newGame() {
+  stopGameTimer();
+
+  setTiles([]);
+  setBoardInitialized(false);
+  state.timeLeft = 120 + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
+  state.phase = 'idle';
+
+  renderBoard();
+  updateMineCounter();
+  updateTimerDisplay();
+  smileyBtn.textContent = '🙂';
+  updateUpgradesAffordability();
+  updatePrestigeBar();
+}
+
+export function init() {
+  cacheDomRefs();
+
+  // Wire cross-module callbacks (avoids circular imports)
+  setNewGameCallback(newGame);
+  setNewGameCallbackForTimers(newGame);
+  setNewGameCallbackForPrestige(newGame);
+  setFlagModeGetter(getFlagMode);
+  setAutoMinerPausedGetter(getAutoMinerPaused);
+  setAutoMinerPausedGetterForUpgrades(getAutoMinerPaused);
+  setTileHandlers(onTileClick, onTileRightClick);
+
+  // Bind static UI buttons
+  smileyBtn.addEventListener('click', () => newGame());
+  prestigeBtn.addEventListener('click', () => prestige());
+
+  // Boot
+  initToolbar();
+  renderUpgrades();
+  newGame();
+  startSaveTimer();
+  startMpsTimer();
+  updateHUD();
+}

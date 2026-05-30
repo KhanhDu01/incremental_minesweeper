@@ -1,0 +1,475 @@
+/* ============================================
+   MINESWEEPER INC. - Classic Win95 Aesthetic
+   ============================================ */
+
+:root {
+  --bg: #c0c0c0;
+  --shadow-light: #ffffff;
+  --shadow-dark: #808080;
+  --shadow-darker: #404040;
+  --tile-size: 36px;
+  --tile-unrevealed: #c0c0c0;
+  --accent: #000080;
+  --danger: #ff0000;
+  --lcd-bg: #000000;
+  --lcd-text: #ff0000;
+  --font-main: 'Courier New', Courier, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden; /* prevent full-page scroll; each section scrolls itself */
+}
+
+body {
+  background: var(--bg);
+  font-family: var(--font-main);
+  font-size: 14px;
+  user-select: none;
+}
+
+/* ---- RAISED/SUNKEN BORDERS (Win95) ---- */
+.raised {
+  border-top: 3px solid var(--shadow-light);
+  border-left: 3px solid var(--shadow-light);
+  border-bottom: 3px solid var(--shadow-darker);
+  border-right: 3px solid var(--shadow-darker);
+}
+.sunken {
+  border-top: 3px solid var(--shadow-darker);
+  border-left: 3px solid var(--shadow-darker);
+  border-bottom: 3px solid var(--shadow-light);
+  border-right: 3px solid var(--shadow-light);
+}
+
+/* ============================================
+   APP SHELL — fills full screen, no body scroll
+   ============================================ */
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+/* ---- HEADER ---- */
+#header {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 10px;
+  background: var(--accent);
+  color: #fff;
+  font-size: clamp(11px, 3.5vw, 14px);
+  font-weight: bold;
+  letter-spacing: 0.5px;
+}
+#stat-money, #stat-mps, #stat-boards {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* ---- TOOLBAR ---- */
+#toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  background: var(--bg);
+  border-bottom: 2px solid var(--shadow-darker);
+}
+
+.tool-btn {
+  font-family: var(--font-main);
+  font-size: 12px;
+  font-weight: bold;
+  background: var(--bg);
+  cursor: pointer;
+  padding: 4px 8px;
+  border-top: 2px solid var(--shadow-light);
+  border-left: 2px solid var(--shadow-light);
+  border-bottom: 2px solid var(--shadow-darker);
+  border-right: 2px solid var(--shadow-darker);
+  white-space: nowrap;
+}
+.tool-btn:active {
+  border-top: 2px solid var(--shadow-darker);
+  border-left: 2px solid var(--shadow-darker);
+  border-bottom: 2px solid var(--shadow-light);
+  border-right: 2px solid var(--shadow-light);
+}
+.tool-btn.active {
+  border-top: 2px solid var(--shadow-darker);
+  border-left: 2px solid var(--shadow-darker);
+  border-bottom: 2px solid var(--shadow-light);
+  border-right: 2px solid var(--shadow-light);
+  background: #a0a0a0;
+}
+.tool-btn.paused {
+  color: #800000;
+}
+.tool-btn.hidden {
+  display: none;
+}
+
+#zoom-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto; /* push zoom to the right */
+}
+#zoom-label {
+  font-size: 11px;
+  font-weight: bold;
+  min-width: 36px;
+  text-align: center;
+}
+
+/* ---- MAIN AREA (board + upgrades) ---- */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* children handle their own scroll */
+  min-height: 0;
+}
+
+/* On wider screens: side-by-side */
+@media (min-width: 600px) {
+  #main {
+    flex-direction: row;
+    align-items: stretch;
+  }
+}
+
+/* ---- BOARD PANEL ---- */
+#board-panel {
+  flex-shrink: 0;
+  background: var(--bg);
+  padding: 6px;
+  border-top: 3px solid var(--shadow-light);
+  border-left: 3px solid var(--shadow-light);
+  border-bottom: 3px solid var(--shadow-darker);
+  border-right: 3px solid var(--shadow-darker);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* On mobile: board panel is fixed height, upgrades scroll below */
+}
+
+/* ---- BOARD HEADER ---- */
+#board-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 6px;
+  background: var(--bg);
+  border-top: 2px solid var(--shadow-darker);
+  border-left: 2px solid var(--shadow-darker);
+  border-bottom: 2px solid var(--shadow-light);
+  border-right: 2px solid var(--shadow-light);
+}
+
+.lcd-display {
+  background: var(--lcd-bg);
+  color: var(--lcd-text);
+  font-family: 'Courier New', monospace;
+  font-size: clamp(16px, 4.5vw, 26px);
+  font-weight: bold;
+  padding: 2px 5px;
+  min-width: 48px;
+  text-align: right;
+  letter-spacing: 2px;
+  border-top: 2px solid var(--shadow-darker);
+  border-left: 2px solid var(--shadow-darker);
+  border-bottom: 2px solid var(--shadow-light);
+  border-right: 2px solid var(--shadow-light);
+}
+
+#smiley-btn {
+  font-size: clamp(18px, 5.5vw, 30px);
+  cursor: pointer;
+  width: clamp(30px, 8vw, 44px);
+  height: clamp(30px, 8vw, 44px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-top: 3px solid var(--shadow-light);
+  border-left: 3px solid var(--shadow-light);
+  border-bottom: 3px solid var(--shadow-darker);
+  border-right: 3px solid var(--shadow-darker);
+  background: var(--bg);
+}
+#smiley-btn:active {
+  border-top: 3px solid var(--shadow-darker);
+  border-left: 3px solid var(--shadow-darker);
+  border-bottom: 3px solid var(--shadow-light);
+  border-right: 3px solid var(--shadow-light);
+}
+
+/* ---- BOARD CONTAINER ---- */
+#board-container {
+  border-top: 3px solid var(--shadow-darker);
+  border-left: 3px solid var(--shadow-darker);
+  border-bottom: 3px solid var(--shadow-light);
+  border-right: 3px solid var(--shadow-light);
+  overflow: auto;
+  /* On mobile: constrain height so upgrades are still visible below */
+  max-height: 42vh;
+  /* On desktop: unconstrained */
+}
+
+@media (min-width: 600px) {
+  #board-container {
+    max-height: none;
+    overflow: auto;
+  }
+}
+
+#board {
+  display: grid;
+  gap: 0;
+}
+
+/* ---- TILES ---- */
+.tile {
+  width: var(--tile-size);
+  height: var(--tile-size);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(var(--tile-size) * 0.52);
+  font-weight: bold;
+  cursor: pointer;
+  border-top: 2px solid var(--shadow-light);
+  border-left: 2px solid var(--shadow-light);
+  border-bottom: 2px solid var(--shadow-darker);
+  border-right: 2px solid var(--shadow-darker);
+  background: var(--tile-unrevealed);
+  flex-shrink: 0;
+}
+.tile.revealed {
+  border: 1px solid var(--shadow-dark);
+  background: var(--bg);
+  cursor: default;
+}
+.tile.flagged { background: var(--tile-unrevealed); }
+.tile.mine-hit { background: var(--danger); }
+
+/* Flag-mode cursor hint */
+body.flag-mode .tile:not(.revealed) {
+  cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><text y='16' font-size='16'>🚩</text></svg>") 4 4, pointer;
+}
+
+.tile.auto-cleared {
+  animation: auto-clear-flash 0.3s ease-out;
+}
+@keyframes auto-clear-flash {
+  0%   { background: #90ee90; }
+  100% { background: var(--bg); }
+}
+
+/* Number colours — classic minesweeper */
+.tile[data-num="1"] { color: #0000ff; }
+.tile[data-num="2"] { color: #008000; }
+.tile[data-num="3"] { color: #ff0000; }
+.tile[data-num="4"] { color: #000080; }
+.tile[data-num="5"] { color: #800000; }
+.tile[data-num="6"] { color: #008080; }
+.tile[data-num="7"] { color: #000000; }
+.tile[data-num="8"] { color: #808080; }
+
+/* ---- PROGRESS BAR ---- */
+#board-footer { padding: 2px 0 0; }
+
+#progress-bar-container {
+  position: relative;
+  height: 16px;
+  background: var(--lcd-bg);
+  border-top: 2px solid var(--shadow-darker);
+  border-left: 2px solid var(--shadow-darker);
+  border-bottom: 2px solid var(--shadow-light);
+  border-right: 2px solid var(--shadow-light);
+  overflow: hidden;
+}
+#progress-bar {
+  height: 100%;
+  width: 0%;
+  background: #000080;
+  transition: width 0.3s ease;
+}
+#progress-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
+/* ---- UPGRADES PANEL ---- */
+#upgrades-panel {
+  flex: 1;
+  min-height: 0;
+  border-top: 3px solid var(--shadow-light);
+  border-left: 3px solid var(--shadow-light);
+  border-bottom: 3px solid var(--shadow-darker);
+  border-right: 3px solid var(--shadow-darker);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#upgrades-header {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  letter-spacing: 2px;
+  padding: 4px 8px;
+  border-bottom: 2px solid var(--shadow-darker);
+}
+#upgrades-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* ---- UPGRADE ITEMS ---- */
+.upgrade-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border-top: 2px solid var(--shadow-light);
+  border-left: 2px solid var(--shadow-light);
+  border-bottom: 2px solid var(--shadow-darker);
+  border-right: 2px solid var(--shadow-darker);
+  cursor: pointer;
+}
+.upgrade-item:active {
+  border-top: 2px solid var(--shadow-darker);
+  border-left: 2px solid var(--shadow-darker);
+  border-bottom: 2px solid var(--shadow-light);
+  border-right: 2px solid var(--shadow-light);
+}
+.upgrade-item.cannot-afford { opacity: 0.5; cursor: not-allowed; }
+.upgrade-item.maxed { opacity: 0.4; cursor: not-allowed; }
+
+.upgrade-icon { font-size: 20px; flex-shrink: 0; width: 24px; text-align: center; }
+.upgrade-info { flex: 1; min-width: 0; }
+.upgrade-name {
+  font-weight: bold;
+  font-size: clamp(11px, 3vw, 13px);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.upgrade-desc {
+  font-size: clamp(10px, 2.5vw, 11px);
+  color: #404040;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.upgrade-level { font-size: 10px; color: #000080; font-weight: bold; }
+.upgrade-cost {
+  font-weight: bold;
+  font-size: clamp(11px, 3vw, 13px);
+  color: #000080;
+  flex-shrink: 0;
+}
+.upgrade-cost.affordable { color: #006400; }
+
+/* ---- PRESTIGE BAR ---- */
+#prestige-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: #ffff00;
+  border: 3px solid #ffa500;
+  justify-content: center;
+}
+#prestige-bar.hidden { display: none; }
+#prestige-btn {
+  background: var(--bg);
+  border-top: 3px solid var(--shadow-light);
+  border-left: 3px solid var(--shadow-light);
+  border-bottom: 3px solid var(--shadow-darker);
+  border-right: 3px solid var(--shadow-darker);
+  padding: 5px 12px;
+  font-family: var(--font-main);
+  font-weight: bold;
+  font-size: 13px;
+  cursor: pointer;
+  letter-spacing: 1px;
+}
+#prestige-btn:active {
+  border-top: 3px solid var(--shadow-darker);
+  border-left: 3px solid var(--shadow-darker);
+  border-bottom: 3px solid var(--shadow-light);
+  border-right: 3px solid var(--shadow-light);
+}
+#prestige-info { font-size: 11px; font-weight: bold; }
+
+/* ---- TOAST ---- */
+#toast-container {
+  position: fixed;
+  top: 50px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 1000;
+}
+.toast {
+  background: var(--accent);
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  padding: 6px 14px;
+  letter-spacing: 1px;
+  border: 2px solid #fff;
+  white-space: nowrap;
+  animation: toast-in 0.15s ease-out;
+}
+.toast.fade-out { animation: toast-out 0.4s ease-in forwards; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes toast-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ---- SCROLLBAR ---- */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb {
+  background: var(--bg);
+  border-top: 2px solid var(--shadow-light);
+  border-left: 2px solid var(--shadow-light);
+  border-bottom: 2px solid var(--shadow-darker);
+  border-right: 2px solid var(--shadow-darker);
+}

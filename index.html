@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#c0c0c0" />
+  <title>MineSweeper Inc.</title>
+  <link rel="stylesheet" href="src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- Header / Stats Bar -->
+    <div id="header">
+      <div id="stat-money">
+        <span class="stat-label">💰</span>
+        <span id="money-display">$0</span>
+      </div>
+      <div id="stat-mps">
+        <span class="stat-label">⚡</span>
+        <span id="mps-display">$0/s</span>
+      </div>
+      <div id="stat-boards">
+        <span class="stat-label">🏆</span>
+        <span id="boards-display">0 boards</span>
+      </div>
+    </div>
+
+    <!-- Main Game Area -->
+    <div id="main">
+      <!-- Board Panel -->
+      <div id="board-panel">
+        <div id="board-header">
+          <div id="mine-counter" class="lcd-display">000</div>
+          <div id="smiley-btn">🙂</div>
+          <div id="timer-display" class="lcd-display">000</div>
+        </div>
+        <div id="board-container">
+          <div id="board"></div>
+        </div>
+        <div id="board-footer">
+          <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+            <span id="progress-label">Board 1</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Upgrades Panel -->
+      <div id="upgrades-panel">
+        <div id="upgrades-header">UPGRADES</div>
+        <div id="upgrades-list"></div>
+      </div>
+    </div>
+
+    <!-- Prestige Bar (hidden until unlocked) -->
+    <div id="prestige-bar" class="hidden">
+      <button id="prestige-btn">⭐ PRESTIGE ⭐</button>
+      <span id="prestige-info"></span>
+    </div>
+
+    <!-- Toast notifications -->
+    <div id="toast-container"></div>
+  </div>
+
+  <script type="module" src="src/main.ts"></script>
+</body>
+</html>

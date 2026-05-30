@@ -1,0 +1,23 @@
+export const CONFIG = {
+  money: 0,
+  totalMoney: 0,
+  boardsCleared: 0,
+  boardNumber: 1,
+  prestigeCount: 0,
+  prestigeMultiplier: 1,
+  phase: 'idle',
+  timeLeft: 15,
+  upgrades: {
+    money_per_tile: 0,
+    reveal_area: 0,
+    auto_clear: 0,
+    auto_clear_speed: 0,
+    auto_flag: 0,
+    auto_flag_speed: 0,
+    longer_timer: 0,
+    board_clear_bonus: 0,
+  },
+  cols: 7,
+  rows: 7,
+  mineCount: 10,
+};
