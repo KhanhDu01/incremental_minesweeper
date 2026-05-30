@@ -1,5 +1,5 @@
 export const CONFIG = {
-  money: 0,
+  money: 300,
   totalMoney: 0,
   boardsCleared: 0,
   boardNumber: 1,
@@ -19,5 +19,7 @@ export const CONFIG = {
   },
   cols: 7,
   rows: 7,
-  mineCount: 10,
+  mineCount: 13,
+  PRESTIGE_BOARDS_REQUIRED: 10,
+  SAVE_KEY: 'incremental_minesweeper_save_v1',
 };

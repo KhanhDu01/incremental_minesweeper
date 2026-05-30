@@ -6,6 +6,7 @@ import { renderBoard, refreshTile, getTileEl, updateTileElement } from '../rende
 import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley } from '../hud';
 import { calcTileEarnings, earnMoney } from '../components/money';
 import { checkWin } from '../input';
+import { CONFIG } from '../../config/config';
 
 // ============================================================
 //  TIMERS
@@ -56,7 +57,7 @@ export function autoStartBoard() {
 
   setTiles([]);
   setBoardInitialized(false);
-  state.timeLeft = 120 + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
+  state.timeLeft = CONFIG.timeLeft + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
   state.phase = 'idle';
   setSmiley('🙂');
   updateMineCounter();

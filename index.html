@@ -11,6 +11,7 @@
 </head>
 <body>
   <div id="app">
+
     <!-- Header / Stats Bar -->
     <div id="header">
       <div id="stat-money">
@@ -27,8 +28,21 @@
       </div>
     </div>
 
+    <!-- Mobile toolbar: flag mode + zoom + auto-miner toggle -->
+    <div id="toolbar">
+      <button id="flag-mode-btn" class="tool-btn" title="Flag mode">🚩 Flag</button>
+      <button id="reset-btn" class="tool-btn" title="Reset game">🔄 Reset</button>
+      <div id="zoom-controls">
+        <button id="zoom-out-btn" class="tool-btn" title="Zoom out">🔍−</button>
+        <span id="zoom-label">100%</span>
+        <button id="zoom-in-btn" class="tool-btn" title="Zoom in">🔍+</button>
+      </div>
+      <button id="auto-miner-toggle" class="tool-btn hidden" title="Pause/resume auto-miner">🤖 ON</button>
+    </div>
+
     <!-- Main Game Area -->
     <div id="main">
+
       <!-- Board Panel -->
       <div id="board-panel">
         <div id="board-header">
@@ -52,6 +66,7 @@
         <div id="upgrades-header">UPGRADES</div>
         <div id="upgrades-list"></div>
       </div>
+
     </div>
 
     <!-- Prestige Bar (hidden until unlocked) -->

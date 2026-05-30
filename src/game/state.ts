@@ -1,5 +1,5 @@
 import type { TileState, GameState } from './types';
-import { loadGame } from './save';
+import { loadGame, resetGame } from './save';
 
 // ============================================================
 //  SHARED MUTABLE STATE
@@ -12,6 +12,10 @@ export let boardInitialized = false;
 
 export function setState(next: Partial<GameState>) {
   Object.assign(state, next);
+}
+
+export function resetState() {
+  Object.assign(state, resetGame());
 }
 
 export function setTiles(next: TileState[][]) {

@@ -1,7 +1,7 @@
 import type { TileState } from '../types';
 import { isSolvable } from '../helper/solver';
 
-const MAX_ATTEMPTS = 50; // try up to 50 times to get a solvable board
+const MAX_ATTEMPTS = 1000; // try up to 1000 times to get a solvable board
 
 export function createBoard(rows: number, cols: number, mineCount: number, safeR: number, safeC: number): TileState[][] {
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {

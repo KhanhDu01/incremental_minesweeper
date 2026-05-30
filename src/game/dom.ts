@@ -22,6 +22,7 @@ export let autoMinerToggle: HTMLElement;
 export let zoomInBtn: HTMLElement;
 export let zoomOutBtn: HTMLElement;
 export let zoomLabel: HTMLElement;
+export let resetBtn: HTMLElement;
 
 export function cacheDomRefs() {
   boardEl          = document.getElementById('board')!;
@@ -43,4 +44,5 @@ export function cacheDomRefs() {
   zoomInBtn        = document.getElementById('zoom-in-btn')!;
   zoomOutBtn       = document.getElementById('zoom-out-btn')!;
   zoomLabel        = document.getElementById('zoom-label')!;
+  resetBtn         = document.getElementById('reset-btn')!;
 }

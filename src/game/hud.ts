@@ -8,16 +8,19 @@ import {
   prestigeBar, prestigeInfo,
   toastContainer, autoMinerToggle,
 } from './dom';
+import { CONFIG } from '../config/config';
 
 // ============================================================
 //  HUD / DISPLAY UPDATES
 // ============================================================
 
-const PRESTIGE_BOARDS_REQUIRED = 10;
+
 
 export function updateHUD() {
   moneyDisplay.textContent = formatMoney(state.money);
   boardsDisplay.textContent = `${state.boardsCleared} boards`;
+  updateTimerDisplay();
+  updateMineCounter();
 }
 
 export function updateMpsDisplay(rate: number) {
@@ -38,7 +41,7 @@ export function setSmiley(emoji: string) {
 }
 
 export function updatePrestigeBar() {
-  const required = PRESTIGE_BOARDS_REQUIRED * (state.prestigeCount + 1);
+  const required = CONFIG.PRESTIGE_BOARDS_REQUIRED * (state.prestigeCount + 1);
   const canPrestige = state.boardsCleared >= required;
 
   if (canPrestige) {

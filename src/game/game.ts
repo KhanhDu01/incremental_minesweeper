@@ -1,5 +1,5 @@
 import { state, setTiles, setBoardInitialized } from './state';
-import { cacheDomRefs, smileyBtn, prestigeBtn } from './dom';
+import { cacheDomRefs, smileyBtn, prestigeBtn, resetBtn } from './dom';
 import { UPGRADE_MAP } from './components/upgrades';
 import { renderBoard, setTileHandlers } from './renderer/renderer';
 import { onTileClick, onTileRightClick, setFlagModeGetter, setNewGameCallback } from './input';
@@ -9,6 +9,8 @@ import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMine
 import { stopGameTimer } from './helper/timers';
 import { prestige, setNewGameCallbackForPrestige } from './prestige';
 import { initToolbar, getFlagMode, getAutoMinerPaused } from './components/toolbar';
+import { CONFIG } from '../config/config';
+import { resetState } from './state';
 
 // ============================================================
 //  GAME — thin orchestrator
@@ -20,7 +22,7 @@ export function newGame() {
 
   setTiles([]);
   setBoardInitialized(false);
-  state.timeLeft = 120 + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
+  state.timeLeft = CONFIG.timeLeft + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
   state.phase = 'idle';
 
   renderBoard();
@@ -29,6 +31,15 @@ export function newGame() {
   smileyBtn.textContent = '🙂';
   updateUpgradesAffordability();
   updatePrestigeBar();
+}
+
+export function resetGame() {
+  resetState();
+  renderUpgrades();
+  newGame();
+  startSaveTimer();
+  startMpsTimer();
+  updateHUD();
 }
 
 export function init() {
@@ -43,8 +54,7 @@ export function init() {
   setAutoMinerPausedGetterForUpgrades(getAutoMinerPaused);
   setTileHandlers(onTileClick, onTileRightClick);
 
-  // Bind static UI buttons
-  smileyBtn.addEventListener('click', () => newGame());
+  resetBtn.addEventListener('click', () => resetGame());
   prestigeBtn.addEventListener('click', () => prestige());
 
   // Boot

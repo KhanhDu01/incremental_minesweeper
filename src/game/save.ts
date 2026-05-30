@@ -1,6 +1,6 @@
 import type { GameState } from './types';
 import { CONFIG } from '../config/config';
-const SAVE_KEY = 'minesweeper_inc_save';
+const SAVE_KEY = CONFIG.SAVE_KEY;
 
 export const DEFAULT_STATE: GameState = {
   money: CONFIG.money,
@@ -30,6 +30,11 @@ export function saveGame(state: GameState): void {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
   } catch { /* quota exceeded, ignore */ }
+}
+
+export function resetGame(): GameState {
+  localStorage.removeItem(SAVE_KEY);
+  return { ...DEFAULT_STATE };
 }
 
 export function loadGame(): GameState {
