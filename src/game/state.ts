@@ -6,7 +6,8 @@ import { loadGame, resetGame } from './save';
 //  Single source of truth imported by all other modules.
 // ============================================================
 
-export let state: GameState = loadGame();
+const _loaded = loadGame();
+export let state: GameState = { ..._loaded, upgrades: { ..._loaded.upgrades } };
 export let tiles: TileState[][] = [];
 export let boardInitialized = false;
 
@@ -15,7 +16,9 @@ export function setState(next: Partial<GameState>) {
 }
 
 export function resetState() {
-  Object.assign(state, resetGame());
+  const fresh = resetGame();
+  Object.assign(state, fresh);
+  state.upgrades = { ...fresh.upgrades }; // ensure nested upgrades object is also reset
 }
 
 export function setTiles(next: TileState[][]) {

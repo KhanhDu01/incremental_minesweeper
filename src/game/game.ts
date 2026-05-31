@@ -5,9 +5,9 @@ import { renderBoard, setTileHandlers } from './renderer/renderer';
 import { onTileClick, onTileRightClick, setFlagModeGetter, setNewGameCallback } from './input';
 import { updateMineCounter, updateTimerDisplay, updateHUD, updatePrestigeBar } from './hud';
 import { updateUpgradesAffordability, renderUpgrades, setAutoMinerPausedGetterForUpgrades } from './renderer/upgrades-ui';
-import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMinerPausedGetter } from './helper/timers';
+import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMinerPausedGetter, stopAllTimers } from './helper/timers';
 import { stopGameTimer } from './helper/timers';
-import { prestige, setNewGameCallbackForPrestige } from './prestige';
+import { prestige, setNewGameCallbackForPrestige } from './components/prestige';
 import { initToolbar, getFlagMode, getAutoMinerPaused } from './components/toolbar';
 import { CONFIG } from '../config/config';
 import { resetState } from './state';
@@ -34,6 +34,7 @@ export function newGame() {
 }
 
 export function resetGame() {
+  stopAllTimers();
   resetState();
   renderUpgrades();
   newGame();

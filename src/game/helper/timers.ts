@@ -48,6 +48,8 @@ export function stopAllTimers() {
   stopGameTimer();
   if (autoClearTimer) { clearInterval(autoClearTimer); autoClearTimer = null; }
   if (autoFlagTimer) { clearInterval(autoFlagTimer); autoFlagTimer = null; }
+   if (saveTimer) { clearInterval(saveTimer); saveTimer = null; }
+  if (mpsTimer) { clearInterval(mpsTimer); mpsTimer = null; }
 }
 
 // ---- Auto-start a board on behalf of the player ----
@@ -119,7 +121,7 @@ export function startAutoFlagTimer() {
   if (autoFlagTimer) clearInterval(autoFlagTimer);
   const interval = UPGRADE_MAP['auto_flag_speed'].effect(state.upgrades.auto_flag_speed);
   const flagsPerTick = UPGRADE_MAP['auto_flag'].effect(state.upgrades.auto_flag);
-
+  console.log('Starting auto-flag timer with interval', interval, 'and flagsPerTick', flagsPerTick);
   autoFlagTimer = setInterval(() => {
     if (_getAutoMinerPaused()) return;
     if (state.phase === 'idle' || state.phase === 'won' || state.phase === 'lost') {
@@ -149,17 +151,19 @@ export function startAutoFlagTimer() {
 // ---- MPS ticker ----
 
 let mpsLastSnapshot = 0;
+let saveTimer: ReturnType<typeof setInterval> | null = null;
+let mpsTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startMpsTimer() {
-  setInterval(() => {
+  if (mpsTimer) clearInterval(mpsTimer);
+  mpsTimer = setInterval(() => {
     const rate = mpsAccum - mpsLastSnapshot;
     mpsLastSnapshot = mpsAccum;
     updateMpsDisplay(rate);
   }, 1000);
 }
 
-// ---- Autosave ----
-
 export function startSaveTimer() {
-  setInterval(() => saveGame(state), 10_000);
+  if (saveTimer) clearInterval(saveTimer);
+  saveTimer = setInterval(() => saveGame(state), 10_000);
 }

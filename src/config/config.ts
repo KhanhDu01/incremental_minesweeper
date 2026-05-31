@@ -1,5 +1,5 @@
 export const CONFIG = {
-  money: 300,
+  money: 10000,
   totalMoney: 0,
   boardsCleared: 0,
   boardNumber: 1,

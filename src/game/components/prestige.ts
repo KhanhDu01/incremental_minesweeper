@@ -1,9 +1,9 @@
-import { state } from './state';
-import { DEFAULT_STATE, saveGame } from './save';
-import { showToast, updateHUD, updatePrestigeBar } from './hud';
-import { stopAllTimers } from './helper/timers';
-import { renderUpgrades } from './renderer/upgrades-ui';
-import { CONFIG } from '../config/config';
+import { state } from '../state';
+import { DEFAULT_STATE, saveGame } from '../save';
+import { showToast, updateHUD, updatePrestigeBar } from '../hud';
+import { stopAllTimers } from '../helper/timers';
+import { renderUpgrades } from '../renderer/upgrades-ui';
+import { CONFIG } from '../../config/config';
 
 // ============================================================
 //  PRESTIGE

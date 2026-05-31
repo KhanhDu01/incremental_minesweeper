@@ -34,13 +34,13 @@ export function saveGame(state: GameState): void {
 
 export function resetGame(): GameState {
   localStorage.removeItem(SAVE_KEY);
-  return { ...DEFAULT_STATE };
+  return { ...DEFAULT_STATE, upgrades: { ...DEFAULT_STATE.upgrades } };
 }
 
 export function loadGame(): GameState {
   try {
     const raw = localStorage.getItem(SAVE_KEY);
-    if (!raw) return { ...DEFAULT_STATE };
+    if (!raw) return { ...DEFAULT_STATE, upgrades: { ...DEFAULT_STATE.upgrades } };
     const saved = JSON.parse(raw) as Partial<GameState>;
     // Merge to handle new fields in future updates
     return {
@@ -50,7 +50,7 @@ export function loadGame(): GameState {
       phase: 'idle', // always start idle
     };
   } catch {
-    return { ...DEFAULT_STATE };
+    return { ...DEFAULT_STATE, upgrades: { ...DEFAULT_STATE.upgrades } };
   }
 }
 

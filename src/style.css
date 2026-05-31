@@ -156,6 +156,7 @@ body {
 /* ---- BOARD PANEL ---- */
 #board-panel {
   flex-shrink: 0;
+  width: 100%;
   background: var(--bg);
   padding: 6px;
   border-top: 3px solid var(--shadow-light);
@@ -220,14 +221,15 @@ body {
 
 /* ---- BOARD CONTAINER ---- */
 #board-container {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
   border-top: 3px solid var(--shadow-darker);
   border-left: 3px solid var(--shadow-darker);
   border-bottom: 3px solid var(--shadow-light);
   border-right: 3px solid var(--shadow-light);
   overflow: auto;
-  /* On mobile: constrain height so upgrades are still visible below */
   max-height: 42vh;
-  /* On desktop: unconstrained */
 }
 
 @media (min-width: 600px) {
@@ -472,4 +474,73 @@ body.flag-mode .tile:not(.revealed) {
   border-left: 2px solid var(--shadow-light);
   border-bottom: 2px solid var(--shadow-darker);
   border-right: 2px solid var(--shadow-darker);
+}
+
+/* ---- Upgrade: hidden (gated) ---- */
+.upgrade-hidden {
+  display: none;
+}
+
+/* ---- Upgrade: name row with category tag ---- */
+.upgrade-name-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+}
+
+.upgrade-category {
+  font-size: 9px;
+  font-weight: bold;
+  letter-spacing: 0.8px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.cat-income     { background: #003000; color: #00cc44; border: 1px solid #006622; }
+.cat-automation { background: #000030; color: #4488ff; border: 1px solid #002288; }
+.cat-board      { background: #300010; color: #ff6688; border: 1px solid #880033; }
+
+/* ---- Upgrade: before/after income ---- */
+.upgrade-before-after {
+  font-size: 10px;
+  color: #008800;
+  font-weight: bold;
+  margin-top: 1px;
+}
+
+/* ---- Upgrade: right column (payback + cost) ---- */
+.upgrade-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+}
+
+.upgrade-payback {
+  font-size: 9px;
+  font-weight: bold;
+  color: #606060;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+.upgrade-payback.good-deal {
+  color: #006600;
+  background: #002200;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid #004400;
+}
+
+/* ---- Milestone unlock animation ---- */
+@keyframes milestone-glow {
+  0%   { box-shadow: inset 0 0 0 2px #ffd700; background: #3a3000; }
+  40%  { box-shadow: inset 0 0 0 3px #ffe066; background: #4a3800; }
+  100% { box-shadow: none; background: var(--tile-unrevealed); }
+}
+
+.upgrade-item.milestone-unlock {
+  animation: milestone-glow 0.8s ease-out forwards;
 }
