@@ -1,25 +1,62 @@
+// ============================================================
+//  CONFIG
+//  All game constants live here.
+//  Prestige scaling is expressed as per-prestige-level deltas
+//  so nothing is hard-coded in game logic.
+// ============================================================
+
 export const CONFIG = {
-  money: 10000,
+  // ---- Starting resources ----
+  money: 0,
   totalMoney: 0,
   boardsCleared: 0,
   boardNumber: 1,
   prestigeCount: 0,
   prestigeMultiplier: 1,
   phase: 'idle',
-  timeLeft: 15,
-  upgrades: {
-    money_per_tile: 0,
-    reveal_area: 0,
-    auto_clear: 0,
-    auto_clear_speed: 0,
-    auto_flag: 0,
-    auto_flag_speed: 0,
-    longer_timer: 0,
-    board_clear_bonus: 0,
-  },
-  cols: 7,
-  rows: 7,
-  mineCount: 13,
+
+  // ---- Base board (prestige 0) ----
+  baseCols: 7,
+  baseRows: 7,
+  baseMineRatio: 0.20,   // fraction of tiles that are mines
+  baseTimeLeft: 15,      // seconds
+
+  // ---- Prestige scaling (added per prestige level) ----
+  prestigeColsPerLevel: 3,
+  prestigeRowsPerLevel: 3,
+  prestigeTimePerLevel: 5,   // +5s per prestige level
+
+  // ---- Upgrade max-level scaling ----
+  // effectiveMax = upgradeBaseMax + prestigeCount * upgradeMaxLevelPerPrestige
+  upgradeBaseMax: 3,           // levels allowed at prestige 0
+  upgradeMaxLevelPerPrestige: 2,
+
+  // ---- Prestige requirement ----
   PRESTIGE_BOARDS_REQUIRED: 10,
-  SAVE_KEY: 'incremental_minesweeper_save_v1',
+
+  // ---- Persistence ----
+  SAVE_KEY: 'incremental_minesweeper_save_v2',
+
+  // ---- Ad space ----
+  adPassiveIncomePerSec: 5,   // in-game $/s while ad panel is visible
 };
+
+// ---- Derived helpers (pure functions, no state) ----
+
+export function getBoardDims(prestigeCount: number): { cols: number; rows: number; mineCount: number } {
+  const cols = CONFIG.baseCols + prestigeCount * CONFIG.prestigeColsPerLevel;
+  const rows = CONFIG.baseRows + prestigeCount * CONFIG.prestigeRowsPerLevel;
+  const mineCount = Math.max(1, Math.floor(cols * rows * CONFIG.baseMineRatio));
+  return { cols, rows, mineCount };
+}
+
+export function getStartingTime(prestigeCount: number): number {
+  return CONFIG.baseTimeLeft + prestigeCount * CONFIG.prestigeTimePerLevel;
+}
+
+/** Returns the effective max level for an upgrade at the given prestige level.
+ *  absoluteMax = the hard cap defined on the Upgrade itself.
+ */
+export function getEffectiveMaxLevel(prestigeCount: number): number {
+  return CONFIG.upgradeBaseMax + prestigeCount * CONFIG.upgradeMaxLevelPerPrestige;
+}

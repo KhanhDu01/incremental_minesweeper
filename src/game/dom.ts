@@ -1,6 +1,5 @@
 // ============================================================
 //  DOM REFS
-//  All getElementById calls live here. Import what you need.
 // ============================================================
 
 export let boardEl: HTMLElement;
@@ -23,26 +22,34 @@ export let zoomInBtn: HTMLElement;
 export let zoomOutBtn: HTMLElement;
 export let zoomLabel: HTMLElement;
 export let resetBtn: HTMLElement;
+export let adToggleBtn: HTMLElement;
+export let adSpaceContainer: HTMLElement;
+export let adIncomeLabel: HTMLElement;
+export let adCloseBtn: HTMLElement;
 
 export function cacheDomRefs() {
-  boardEl          = document.getElementById('board')!;
-  mineCounterEl    = document.getElementById('mine-counter')!;
-  timerEl          = document.getElementById('timer-display')!;
-  smileyBtn        = document.getElementById('smiley-btn')!;
-  moneyDisplay     = document.getElementById('money-display')!;
-  mpsDisplay       = document.getElementById('mps-display')!;
-  boardsDisplay    = document.getElementById('boards-display')!;
-  progressBar      = document.getElementById('progress-bar')!;
-  progressLabel    = document.getElementById('progress-label')!;
-  upgradesListEl   = document.getElementById('upgrades-list')!;
-  prestigeBar      = document.getElementById('prestige-bar')!;
-  prestigeBtn      = document.getElementById('prestige-btn')!;
-  prestigeInfo     = document.getElementById('prestige-info')!;
-  toastContainer   = document.getElementById('toast-container')!;
-  flagModeBtn      = document.getElementById('flag-mode-btn')!;
-  autoMinerToggle  = document.getElementById('auto-miner-toggle')!;
-  zoomInBtn        = document.getElementById('zoom-in-btn')!;
-  zoomOutBtn       = document.getElementById('zoom-out-btn')!;
-  zoomLabel        = document.getElementById('zoom-label')!;
-  resetBtn         = document.getElementById('reset-btn')!;
+  boardEl            = document.getElementById('board')!;
+  mineCounterEl      = document.getElementById('mine-counter')!;
+  timerEl            = document.getElementById('timer-display')!;
+  smileyBtn          = document.getElementById('smiley-btn')!;
+  moneyDisplay       = document.getElementById('money-display')!;
+  mpsDisplay         = document.getElementById('mps-display')!;
+  boardsDisplay      = document.getElementById('boards-display')!;
+  progressBar        = document.getElementById('progress-bar')!;
+  progressLabel      = document.getElementById('progress-label')!;
+  upgradesListEl     = document.getElementById('upgrades-list')!;
+  prestigeBar        = document.getElementById('prestige-bar')!;
+  prestigeBtn        = document.getElementById('prestige-btn')!;
+  prestigeInfo       = document.getElementById('prestige-info')!;
+  toastContainer     = document.getElementById('toast-container')!;
+  flagModeBtn        = document.getElementById('flag-mode-btn')!;
+  autoMinerToggle    = document.getElementById('auto-miner-toggle')!;
+  zoomInBtn          = document.getElementById('zoom-in-btn')!;
+  zoomOutBtn         = document.getElementById('zoom-out-btn')!;
+  zoomLabel          = document.getElementById('zoom-label')!;
+  resetBtn           = document.getElementById('reset-btn')!;
+  adToggleBtn        = document.getElementById('ad-toggle-btn')!;
+  adSpaceContainer   = document.getElementById('ad-space-container')!;
+  adIncomeLabel      = document.getElementById('ad-income-label')!;
+  adCloseBtn         = document.getElementById('ad-close-btn')!;
 }

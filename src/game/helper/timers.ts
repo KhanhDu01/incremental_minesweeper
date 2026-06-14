@@ -6,7 +6,7 @@ import { renderBoard, refreshTile, getTileEl, updateTileElement } from '../rende
 import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley } from '../hud';
 import { calcTileEarnings, earnMoney } from '../components/money';
 import { checkWin } from '../input';
-import { CONFIG } from '../../config/config';
+import { getStartingTime } from '../../config/config';
 
 // ============================================================
 //  TIMERS
@@ -15,12 +15,12 @@ import { CONFIG } from '../../config/config';
 let gameTimer: ReturnType<typeof setInterval> | null = null;
 let autoClearTimer: ReturnType<typeof setInterval> | null = null;
 let autoFlagTimer: ReturnType<typeof setInterval> | null = null;
+let saveTimer: ReturnType<typeof setInterval> | null = null;
+let mpsTimer: ReturnType<typeof setInterval> | null = null;
 
-// Injected from game.ts to avoid circular deps
 let _newGame: () => void = () => {};
 export function setNewGameCallbackForTimers(fn: () => void) { _newGame = fn; }
 
-// Injected from toolbar.ts
 let _getAutoMinerPaused: () => boolean = () => false;
 export function setAutoMinerPausedGetter(fn: () => boolean) { _getAutoMinerPaused = fn; }
 
@@ -47,19 +47,19 @@ export function stopGameTimer() {
 export function stopAllTimers() {
   stopGameTimer();
   if (autoClearTimer) { clearInterval(autoClearTimer); autoClearTimer = null; }
-  if (autoFlagTimer) { clearInterval(autoFlagTimer); autoFlagTimer = null; }
-   if (saveTimer) { clearInterval(saveTimer); saveTimer = null; }
-  if (mpsTimer) { clearInterval(mpsTimer); mpsTimer = null; }
+  if (autoFlagTimer)  { clearInterval(autoFlagTimer);  autoFlagTimer  = null; }
+  if (saveTimer)      { clearInterval(saveTimer);      saveTimer      = null; }
+  if (mpsTimer)       { clearInterval(mpsTimer);       mpsTimer       = null; }
 }
 
-// ---- Auto-start a board on behalf of the player ----
+// ---- Auto-start board ----
 
 export function autoStartBoard() {
   if (state.phase === 'playing') return;
 
   setTiles([]);
   setBoardInitialized(false);
-  state.timeLeft = CONFIG.timeLeft + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
+  state.timeLeft = getStartingTime(state.prestigeCount) + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
   state.phase = 'idle';
   setSmiley('🙂');
   updateMineCounter();
@@ -121,7 +121,7 @@ export function startAutoFlagTimer() {
   if (autoFlagTimer) clearInterval(autoFlagTimer);
   const interval = UPGRADE_MAP['auto_flag_speed'].effect(state.upgrades.auto_flag_speed);
   const flagsPerTick = UPGRADE_MAP['auto_flag'].effect(state.upgrades.auto_flag);
-  console.log('Starting auto-flag timer with interval', interval, 'and flagsPerTick', flagsPerTick);
+
   autoFlagTimer = setInterval(() => {
     if (_getAutoMinerPaused()) return;
     if (state.phase === 'idle' || state.phase === 'won' || state.phase === 'lost') {
@@ -151,8 +151,6 @@ export function startAutoFlagTimer() {
 // ---- MPS ticker ----
 
 let mpsLastSnapshot = 0;
-let saveTimer: ReturnType<typeof setInterval> | null = null;
-let mpsTimer: ReturnType<typeof setInterval> | null = null;
 
 export function startMpsTimer() {
   if (mpsTimer) clearInterval(mpsTimer);

@@ -544,3 +544,100 @@ body.flag-mode .tile:not(.revealed) {
 .upgrade-item.milestone-unlock {
   animation: milestone-glow 0.8s ease-out forwards;
 }
+
+/* ============================================
+   AD SPACE
+   ============================================ */
+
+#ad-space-container {
+  flex-shrink: 0;
+  background: var(--bg);
+  border-top: 3px solid var(--shadow-light);
+  border-left: 3px solid var(--shadow-light);
+  border-bottom: 3px solid var(--shadow-darker);
+  border-right: 3px solid var(--shadow-darker);
+}
+
+#ad-space-container.hidden { display: none; }
+
+#ad-space-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 8px;
+  background: #1a1a2e;
+  color: #88aaff;
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+}
+
+#ad-space-title {
+  letter-spacing: 3px;
+  opacity: 0.7;
+}
+
+#ad-income-label {
+  color: #44ff88;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.ad-close {
+  font-size: 11px;
+  padding: 1px 6px;
+  line-height: 1;
+}
+
+#ad-slot {
+  min-height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Placeholder shown until real ad markup is inserted */
+.ad-placeholder {
+  width: 100%;
+  min-height: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #111122;
+  padding: 10px 16px;
+}
+
+.ad-placeholder .ad-label {
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: #444466;
+  font-weight: bold;
+}
+
+.ad-placeholder .ad-hint {
+  font-size: 11px;
+  color: #6666aa;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.ad-placeholder .ad-hint code,
+.ad-placeholder .ad-hint strong {
+  color: #88aaff;
+}
+
+/* ============================================
+   PRESTIGE-LOCKED UPGRADE COST BADGE
+   ============================================ */
+
+.upgrade-prestige-locked {
+  font-size: 10px !important;
+  color: #ffaa00 !important;
+  background: #2a1a00;
+  padding: 2px 5px;
+  border-radius: 3px;
+  border: 1px solid #664400;
+  white-space: nowrap;
+}

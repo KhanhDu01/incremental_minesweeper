@@ -1,6 +1,8 @@
 import type { GameState } from './types';
-import { CONFIG } from '../config/config';
+import { CONFIG, getBoardDims, getStartingTime } from '../config/config';
 const SAVE_KEY = CONFIG.SAVE_KEY;
+
+const baseDims = getBoardDims(0);
 
 export const DEFAULT_STATE: GameState = {
   money: CONFIG.money,
@@ -10,26 +12,26 @@ export const DEFAULT_STATE: GameState = {
   prestigeCount: CONFIG.prestigeCount,
   prestigeMultiplier: CONFIG.prestigeMultiplier,
   phase: 'idle',
-  timeLeft: CONFIG.timeLeft,
+  timeLeft: getStartingTime(0),
   upgrades: {
-    money_per_tile: CONFIG.upgrades.money_per_tile,
-    reveal_area: CONFIG.upgrades.reveal_area,
-    auto_clear: CONFIG.upgrades.auto_clear,
-    auto_clear_speed: CONFIG.upgrades.auto_clear_speed,
-    auto_flag: CONFIG.upgrades.auto_flag,
-    auto_flag_speed: CONFIG.upgrades.auto_flag_speed,
-    longer_timer: CONFIG.upgrades.longer_timer,
-    board_clear_bonus: CONFIG.upgrades.board_clear_bonus,
+    money_per_tile: 0,
+    reveal_area: 0,
+    auto_clear: 0,
+    auto_clear_speed: 0,
+    auto_flag: 0,
+    auto_flag_speed: 0,
+    longer_timer: 0,
+    board_clear_bonus: 0,
   },
-  cols: CONFIG.cols,
-  rows: CONFIG.rows,
-  mineCount: CONFIG.mineCount,
+  cols: baseDims.cols,
+  rows: baseDims.rows,
+  mineCount: baseDims.mineCount,
 };
 
 export function saveGame(state: GameState): void {
   try {
     localStorage.setItem(SAVE_KEY, JSON.stringify(state));
-  } catch { /* quota exceeded, ignore */ }
+  } catch { /* quota exceeded */ }
 }
 
 export function resetGame(): GameState {
@@ -42,12 +44,11 @@ export function loadGame(): GameState {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return { ...DEFAULT_STATE, upgrades: { ...DEFAULT_STATE.upgrades } };
     const saved = JSON.parse(raw) as Partial<GameState>;
-    // Merge to handle new fields in future updates
     return {
       ...DEFAULT_STATE,
       ...saved,
       upgrades: { ...DEFAULT_STATE.upgrades, ...(saved.upgrades ?? {}) },
-      phase: 'idle', // always start idle
+      phase: 'idle',
     };
   } catch {
     return { ...DEFAULT_STATE, upgrades: { ...DEFAULT_STATE.upgrades } };

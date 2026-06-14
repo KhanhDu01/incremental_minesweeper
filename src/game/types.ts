@@ -28,7 +28,6 @@ export type Upgrade = {
   icon: string;
   baseCost: number;
   costMultiplier: number;
-  maxLevel: number;
   effect: (level: number) => number; // returns the effective value at given level
 };
 

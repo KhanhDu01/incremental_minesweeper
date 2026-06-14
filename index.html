@@ -8,6 +8,9 @@
   <meta name="theme-color" content="#c0c0c0" />
   <title>MineSweeper Inc.</title>
   <link rel="stylesheet" href="src/style.css" />
+
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2362830220646360"
+     crossorigin="anonymous"></script>
 </head>
 <body>
   <div id="app">
@@ -28,10 +31,11 @@
       </div>
     </div>
 
-    <!-- Mobile toolbar: flag mode + zoom + auto-miner toggle -->
+    <!-- Mobile toolbar: flag mode + zoom + auto-miner toggle + ad toggle -->
     <div id="toolbar">
       <button id="flag-mode-btn" class="tool-btn" title="Flag mode">🚩 Flag</button>
       <button id="reset-btn" class="tool-btn" title="Reset game">🔄 Reset</button>
+      <button id="ad-toggle-btn" class="tool-btn" title="Toggle ad panel">📺 Ads: OFF</button>
       <div id="zoom-controls">
         <button id="zoom-out-btn" class="tool-btn" title="Zoom out">🔍−</button>
         <span id="zoom-label">100%</span>
@@ -73,6 +77,25 @@
     <div id="prestige-bar" class="hidden">
       <button id="prestige-btn">⭐ PRESTIGE ⭐</button>
       <span id="prestige-info"></span>
+    </div>
+
+    <!-- Ad Space (hidden until toggled on) -->
+    <!-- The <ins> tag must be in the HTML at load time for AdSense to detect it. -->
+    <!-- adSpace.ts calls adsbygoogle.push({}) once when the panel is first shown. -->
+    <div id="ad-space-container" class="hidden">
+      <div id="ad-space-header">
+        <span id="ad-income-label">📺 +$5/s</span>
+        <span id="ad-space-title">AD SPACE</span>
+        <button id="ad-close-btn" class="tool-btn ad-close" title="Close ads">✕</button>
+      </div>
+      <div id="ad-slot">
+        <ins class="adsbygoogle"
+             style="display:block;width:100%;height:90px"
+             data-ad-client="ca-pub-2362830220646360"
+             data-ad-slot="1591221758"
+             data-ad-format="horizontal"
+             data-full-width-responsive="true"></ins>
+      </div>
     </div>
 
     <!-- Toast notifications -->

@@ -9,22 +9,20 @@ import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMine
 import { stopGameTimer } from './helper/timers';
 import { prestige, setNewGameCallbackForPrestige } from './components/prestige';
 import { initToolbar, getFlagMode, getAutoMinerPaused } from './components/toolbar';
-import { CONFIG } from '../config/config';
+import { toggleAdSpace } from './components/adSpace';
+import { getStartingTime } from '../config/config';
 import { resetState } from './state';
 
 // ============================================================
 //  GAME — thin orchestrator
-//  Wires all modules together. Contains only newGame() and init().
 // ============================================================
 
 export function newGame() {
   stopGameTimer();
-
   setTiles([]);
   setBoardInitialized(false);
-  state.timeLeft = CONFIG.timeLeft + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
+  state.timeLeft = getStartingTime(state.prestigeCount) + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
   state.phase = 'idle';
-
   renderBoard();
   updateMineCounter();
   updateTimerDisplay();
@@ -46,7 +44,6 @@ export function resetGame() {
 export function init() {
   cacheDomRefs();
 
-  // Wire cross-module callbacks (avoids circular imports)
   setNewGameCallback(newGame);
   setNewGameCallbackForTimers(newGame);
   setNewGameCallbackForPrestige(newGame);
@@ -58,7 +55,12 @@ export function init() {
   resetBtn.addEventListener('click', () => resetGame());
   prestigeBtn.addEventListener('click', () => prestige());
 
-  // Boot
+  // Ad panel toggle + close button
+  const adToggleBtn = document.getElementById('ad-toggle-btn');
+  const adCloseBtn  = document.getElementById('ad-close-btn');
+  if (adToggleBtn) adToggleBtn.addEventListener('click', () => toggleAdSpace());
+  if (adCloseBtn)  adCloseBtn.addEventListener('click', () => toggleAdSpace(true));
+
   initToolbar();
   renderUpgrades();
   newGame();
