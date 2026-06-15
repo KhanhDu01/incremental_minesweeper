@@ -2,11 +2,12 @@ import { state, tiles, boardInitialized, setTiles, setBoardInitialized, mpsAccum
 import { createBoard, floodReveal, getSafeTiles, getMineTiles } from '../board/board';
 import { UPGRADE_MAP } from '../upgrades/upgrades';
 import { saveGame } from '../state/save';
-import { renderBoard, refreshTile, getTileEl, updateTileElement } from '../ui/renderer';
-import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley } from '../ui/hud';
-import { calcTileEarnings, earnMoney } from './money';
+import { renderBoard, refreshTile, getTileEl, updateTileElement, drawCanvas } from '../ui/renderer';
+import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley, updateHUD } from '../ui/hud';
+import { calcTileEarnings, earnMoney, earnMoneyQuiet } from './money';
 import { checkWin } from './input';
 import { getStartingTime } from '../config';
+import { updateUpgradesAffordability } from '../upgrades/upgrades-ui';
 
 // ============================================================
 //  TIMERS
@@ -17,12 +18,26 @@ let autoClearTimer: ReturnType<typeof setInterval> | null = null;
 let autoFlagTimer: ReturnType<typeof setInterval> | null = null;
 let saveTimer: ReturnType<typeof setInterval> | null = null;
 let mpsTimer: ReturnType<typeof setInterval> | null = null;
+let renderPending = false;
 
 let _newGame: () => void = () => {};
 export function setNewGameCallbackForTimers(fn: () => void) { _newGame = fn; }
 
 let _getAutoMinerPaused: () => boolean = () => false;
 export function setAutoMinerPausedGetter(fn: () => boolean) { _getAutoMinerPaused = fn; }
+
+export function scheduleRender() {
+  if (renderPending) return;
+  renderPending = true;
+  requestAnimationFrame(() => {
+    renderPending = false;
+    // Import these at the top of the file
+    updateMineCounter();
+    updateHUD();
+    updateUpgradesAffordability();
+    drawCanvas(); // re-draw board if in canvas mode
+  });
+}
 
 // ---- Game countdown ----
 
@@ -96,23 +111,14 @@ export function startAutoClearTimer() {
     for (let i = 0; i < Math.min(tilesPerTick, safe.length); i++) {
       const [r, c] = safe[i];
       const revealed = floodReveal(tiles, r, c, state.rows, state.cols);
-      revealed.forEach(([tr, tc]) => {
-        const el = getTileEl(tr, tc);
-        if (el) {
-          updateTileElement(el, tiles[tr][tc]);
-          el.classList.add('auto-cleared');
-          setTimeout(() => el.classList.remove('auto-cleared'), 300);
-        } else {
-          refreshTile(tr, tc);
-        }
-      });
+      // Just mutate state — no DOM touches here
       cleared += revealed.length;
     }
 
     if (cleared > 0) {
-      earnMoney(calcTileEarnings(cleared));
-      updateMineCounter();
+      earnMoneyQuiet(cleared); // see below
       checkWin();
+      scheduleRender();        // one rAF for all DOM work
     }
   }, interval);
 }
@@ -137,15 +143,13 @@ export function startAutoFlagTimer() {
 
     let flagged = 0;
     for (let i = 0; i < Math.min(flagsPerTick, mines.length); i++) {
-      const [r, c] = mines[i];
-      tiles[r][c].isFlagged = true;
-      refreshTile(r, c);
+      tiles[mines[i][0]][mines[i][1]].isFlagged = true;
       flagged++;
     }
 
     if (flagged > 0) {
-      earnMoney(calcTileEarnings(flagged));
-      updateMineCounter();
+      earnMoneyQuiet(flagged);
+      scheduleRender();
     }
   }, interval);
 }

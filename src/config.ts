@@ -24,7 +24,7 @@ export const CONFIG = {
   // ---- Prestige scaling (added per prestige level) ----
   prestigeColsPerLevel: 3,
   prestigeRowsPerLevel: 3,
-  prestigeTimePerLevel: 5,   // +5s per prestige level
+  prestigeTimePerLevel: 0,   // +0s per prestige level
 
   // ---- Upgrade max-level scaling ----
   // effectiveMax = upgradeBaseMax + prestigeCount * upgradeMaxLevelPerPrestige
@@ -32,7 +32,7 @@ export const CONFIG = {
   upgradeMaxLevelPerPrestige: 2,
 
   // ---- Prestige requirement ----
-  PRESTIGE_BOARDS_REQUIRED: 0,
+  PRESTIGE_BOARDS_REQUIRED: 5,
 
   // ---- Persistence ----
   SAVE_KEY: 'incremental_minesweeper_save_v2',

@@ -96,12 +96,14 @@ function applyZoom() {
 }
 
 export function squareBoardContainer() {
-  const tabBoard  = document.getElementById('tab-board');
-  const container = document.getElementById('board-container');
-  if (!tabBoard || !container) return;
+  const boardPanel = document.getElementById('board-panel');
+  const container  = document.getElementById('board-container');
+  if (!boardPanel || !container) return;
 
-  // Use the tab panel's width as the square size, minus padding
-  const size = tabBoard.clientWidth - 20;
+  // Available space minus padding (10px each side)
+  const availW = boardPanel.clientWidth  - 20;
+  const availH = boardPanel.clientHeight - 20;
+  const size   = Math.min(availW, availH); // square: take the smaller dimension
   container.style.width  = `${size}px`;
   container.style.height = `${size}px`;
   document.documentElement.style.setProperty('--board-container-size', `${size}px`);

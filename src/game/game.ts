@@ -68,10 +68,14 @@ export function init() {
   initToolbar();
   initTabs();        // tabs wired last, after everything else
   renderUpgrades();
-  newGame();
-  startSaveTimer();
-  startMpsTimer();
-  updateHUD();
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {   // double-rAF ensures layout is complete
+      newGame();
+      startSaveTimer();
+      startMpsTimer();
+      updateHUD();
+    });
+  });
 }
 
 function initTabs() {
