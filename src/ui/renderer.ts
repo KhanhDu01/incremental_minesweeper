@@ -225,3 +225,15 @@ function setupLongPress(el: HTMLElement, callback: () => void) {
   el.addEventListener('touchend',  () => { if (timer) { clearTimeout(timer); timer = null; } });
   el.addEventListener('touchmove', () => { if (timer) { clearTimeout(timer); timer = null; } });
 }
+
+export function refreshAllTiles() {
+  if (usingCanvas) {
+    drawCanvas();
+    return;
+  }
+  for (let r = 0; r < state.rows; r++) {
+    for (let c = 0; c < state.cols; c++) {
+      refreshTile(r, c);
+    }
+  }
+}

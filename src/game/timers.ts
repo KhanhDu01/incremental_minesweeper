@@ -2,7 +2,7 @@ import { state, tiles, boardInitialized, setTiles, setBoardInitialized, mpsAccum
 import { createBoard, floodReveal, getSafeTiles, getMineTiles } from '../board/board';
 import { UPGRADE_MAP } from '../upgrades/upgrades';
 import { saveGame } from '../state/save';
-import { renderBoard, drawCanvas } from '../ui/renderer';
+import { renderBoard, refreshAllTiles } from '../ui/renderer';
 import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley, updateHUD } from '../ui/hud';
 import { earnMoneyQuiet } from './money';
 import { checkWin } from './input';
@@ -35,7 +35,7 @@ export function scheduleRender() {
     updateMineCounter();
     updateHUD();
     updateUpgradesAffordability();
-    drawCanvas(); // re-draw board if in canvas mode
+    refreshAllTiles(); // re-draw board if in canvas mode
   });
 }
 
