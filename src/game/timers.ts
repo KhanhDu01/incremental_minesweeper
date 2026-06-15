@@ -2,9 +2,9 @@ import { state, tiles, boardInitialized, setTiles, setBoardInitialized, mpsAccum
 import { createBoard, floodReveal, getSafeTiles, getMineTiles } from '../board/board';
 import { UPGRADE_MAP } from '../upgrades/upgrades';
 import { saveGame } from '../state/save';
-import { renderBoard, refreshTile, getTileEl, updateTileElement, drawCanvas } from '../ui/renderer';
+import { renderBoard, drawCanvas } from '../ui/renderer';
 import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley, updateHUD } from '../ui/hud';
-import { calcTileEarnings, earnMoney, earnMoneyQuiet } from './money';
+import { earnMoneyQuiet } from './money';
 import { checkWin } from './input';
 import { getStartingTime } from '../config';
 import { updateUpgradesAffordability } from '../upgrades/upgrades-ui';

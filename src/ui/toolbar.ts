@@ -42,12 +42,6 @@ export function initToolbar() {
 
 /** Clamp zoom index so the board never exceeds ~85vw / 50vh. */
 function getMinZoomIdx(): number {
-  const cols = state.cols ?? 7;
-  const rows = state.rows ?? 7;
-  // Target: tile fits within 85vw / cols and 50vh / rows
-  const maxByWidth  = Math.floor((window.innerWidth  * 0.85) / cols);
-  const maxByHeight = Math.floor((window.innerHeight * 0.50) / rows);
-  const maxTilePx   = Math.min(maxByWidth, maxByHeight);
 
   // Find the largest step that is <= maxTilePx; everything above it is fine,
   // but we want to make sure even the MINIMUM step isn't too large.
