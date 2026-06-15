@@ -32,7 +32,7 @@ export const CONFIG = {
   upgradeMaxLevelPerPrestige: 2,
 
   // ---- Prestige requirement ----
-  PRESTIGE_BOARDS_REQUIRED: 10,
+  PRESTIGE_BOARDS_REQUIRED: 0,
 
   // ---- Persistence ----
   SAVE_KEY: 'incremental_minesweeper_save_v2',

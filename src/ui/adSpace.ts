@@ -6,9 +6,9 @@
 //  reveal to trigger ad fill.
 // ============================================================
 
-import { CONFIG } from '../../config/config';
-import { earnMoney } from './money';
-import { showToast } from '../hud';
+import { CONFIG } from '../config';
+import { earnMoney } from '../game/money';
+import { showToast } from './hud';
 
 let adEnabled = false;
 let adTimer: ReturnType<typeof setInterval> | null = null;

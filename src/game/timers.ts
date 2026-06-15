@@ -1,12 +1,12 @@
-import { state, tiles, boardInitialized, setTiles, setBoardInitialized, mpsAccum } from '../state';
-import { createBoard, floodReveal, getSafeTiles, getMineTiles } from '../components/board';
-import { UPGRADE_MAP } from '../components/upgrades';
-import { saveGame } from '../save';
-import { renderBoard, refreshTile, getTileEl, updateTileElement } from '../renderer/renderer';
-import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley } from '../hud';
-import { calcTileEarnings, earnMoney } from '../components/money';
-import { checkWin } from '../input';
-import { getStartingTime } from '../../config/config';
+import { state, tiles, boardInitialized, setTiles, setBoardInitialized, mpsAccum } from '../state/state';
+import { createBoard, floodReveal, getSafeTiles, getMineTiles } from '../board/board';
+import { UPGRADE_MAP } from '../upgrades/upgrades';
+import { saveGame } from '../state/save';
+import { renderBoard, refreshTile, getTileEl, updateTileElement } from '../ui/renderer';
+import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley } from '../ui/hud';
+import { calcTileEarnings, earnMoney } from './money';
+import { checkWin } from './input';
+import { getStartingTime } from '../config';
 
 // ============================================================
 //  TIMERS
@@ -102,6 +102,8 @@ export function startAutoClearTimer() {
           updateTileElement(el, tiles[tr][tc]);
           el.classList.add('auto-cleared');
           setTimeout(() => el.classList.remove('auto-cleared'), 300);
+        } else {
+          refreshTile(tr, tc);
         }
       });
       cleared += revealed.length;

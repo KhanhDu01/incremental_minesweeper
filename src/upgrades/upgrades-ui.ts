@@ -1,27 +1,23 @@
-import type { UpgradeId } from '../types';
-import { state } from '../state';
-import { UPGRADES, UPGRADE_MAP, upgradeCost, effectiveMaxLevel } from '../components/upgrades';
-import { formatMoney } from '../save';
-import { upgradesListEl } from '../dom';
-import { updateHUD, showToast, updateAutoMinerToggle, updateTimerDisplay } from '../hud';
-import { startAutoClearTimer, startAutoFlagTimer } from '../helper/timers';
-import { getStartingTime } from '../../config/config';
-
-let _getAutoMinerPaused: () => boolean = () => false;
-export function setAutoMinerPausedGetterForUpgrades(fn: () => boolean) {
-  _getAutoMinerPaused = fn;
-}
+import type { UpgradeId } from '../state/types';
+import { state } from '../state/state';
+import { UPGRADES, UPGRADE_MAP, upgradeCost, effectiveMaxLevel } from './upgrades';
+import { formatMoney } from '../state/save';
+import { upgradesListEl } from '../ui/dom';
+import { updateHUD, showToast, updateTimerDisplay } from '../ui/hud';
+import { startAutoClearTimer, startAutoFlagTimer } from '../game/timers';
+import { getStartingTime } from '../config';
+import { setAutoMinerPaused, getAutoMinerPaused } from '../ui/toolbar';
 
 // ---- Category metadata ----
 const UPGRADE_CATEGORY: Record<UpgradeId, 'Income' | 'Automation' | 'Board'> = {
-  money_per_tile:   'Income',
-  board_clear_bonus:'Income',
-  reveal_area:      'Income',
-  longer_timer:     'Board',
-  auto_clear:       'Automation',
-  auto_clear_speed: 'Automation',
-  auto_flag:        'Automation',
-  auto_flag_speed:  'Automation',
+  money_per_tile:    'Income',
+  board_clear_bonus: 'Income',
+  reveal_area:       'Income',
+  longer_timer:      'Board',
+  auto_clear:        'Automation',
+  auto_clear_speed:  'Automation',
+  auto_flag:         'Automation',
+  auto_flag_speed:   'Automation',
 };
 
 const HIDDEN_UNTIL: Partial<Record<UpgradeId, { req: UpgradeId; minLevel: number }>> = {
@@ -33,60 +29,6 @@ function isHidden(id: UpgradeId): boolean {
   const gate = HIDDEN_UNTIL[id];
   if (!gate) return false;
   return state.upgrades[gate.req] < gate.minLevel;
-}
-
-// ---- Payback ----
-function calcPayback(id: UpgradeId): number | null {
-  const upgrade = UPGRADE_MAP[id];
-  const level = state.upgrades[id];
-  const maxLvl = effectiveMaxLevel(id);
-  if (level >= maxLvl) return null;
-
-  const cost = upgradeCost(upgrade, level);
-  const before = getMpsFromUpgrade(id, level);
-  const after  = getMpsFromUpgrade(id, level + 1);
-  const delta = after - before;
-  if (delta <= 0) return null;
-  return Math.round(cost / delta);
-}
-
-function getMpsFromUpgrade(id: UpgradeId, level: number): number {
-  const tilesPerSec = getEstimatedTilesPerSec();
-  switch (id) {
-    case 'money_per_tile':
-      return tilesPerSec * UPGRADE_MAP['money_per_tile'].effect(level) * state.prestigeMultiplier;
-    case 'auto_clear': {
-      const speed = Math.max(100, UPGRADE_MAP['auto_clear_speed'].effect(state.upgrades.auto_clear_speed));
-      return (UPGRADE_MAP['auto_clear'].effect(level) * 1000 / speed)
-        * UPGRADE_MAP['money_per_tile'].effect(state.upgrades.money_per_tile)
-        * state.prestigeMultiplier;
-    }
-    case 'auto_clear_speed': {
-      const t = UPGRADE_MAP['auto_clear'].effect(state.upgrades.auto_clear);
-      const speed = Math.max(100, UPGRADE_MAP['auto_clear_speed'].effect(level));
-      return (t * 1000 / speed) * UPGRADE_MAP['money_per_tile'].effect(state.upgrades.money_per_tile) * state.prestigeMultiplier;
-    }
-    default:
-      return 0;
-  }
-}
-
-function getEstimatedTilesPerSec(): number {
-  const t = UPGRADE_MAP['auto_clear'].effect(state.upgrades.auto_clear);
-  if (t === 0) return 0;
-  const speed = Math.max(100, UPGRADE_MAP['auto_clear_speed'].effect(state.upgrades.auto_clear_speed));
-  return (t * 1000) / speed;
-}
-
-function getBeforeAfterText(id: UpgradeId): string | null {
-  const level = state.upgrades[id];
-  const maxLvl = effectiveMaxLevel(id);
-  if (level >= maxLvl) return null;
-  const before = getMpsFromUpgrade(id, level);
-  const after  = getMpsFromUpgrade(id, level + 1);
-  if (before === 0 && after === 0) return null;
-  if (Math.round(before) === Math.round(after)) return null;
-  return `${formatMoney(Math.round(before))}/s → ${formatMoney(Math.round(after))}/s`;
 }
 
 // ---- Sounds ----
@@ -127,7 +69,13 @@ export function renderUpgrades() {
     const el = document.createElement('div');
     el.className = 'upgrade-item';
     el.dataset.id = upgrade.id;
-    el.addEventListener('click', () => buyUpgrade(upgrade.id));
+
+    // Buy on click, but NOT when clicking the pause toggle
+    el.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('.auto-miner-toggle-btn')) return;
+      buyUpgrade(upgrade.id);
+    });
+
     upgradesListEl.appendChild(el);
     updateUpgradeElement(upgrade.id);
   });
@@ -135,12 +83,12 @@ export function renderUpgrades() {
 
 export function updateUpgradeElement(id: UpgradeId) {
   const upgrade = UPGRADE_MAP[id];
-  const level = state.upgrades[id];
-  const maxLvl = effectiveMaxLevel(id);
-  const maxed = level >= maxLvl;
-  const cost = upgradeCost(upgrade, level);
+  const level   = state.upgrades[id];
+  const maxLvl  = effectiveMaxLevel(id);
+  const maxed   = level >= maxLvl;
+  const cost    = upgradeCost(upgrade, level);
   const canAfford = state.money >= cost;
-  const hidden = isHidden(id);
+  const hidden  = isHidden(id);
   const category = UPGRADE_CATEGORY[id];
 
   const el = upgradesListEl.querySelector(`[data-id="${id}"]`) as HTMLElement;
@@ -154,22 +102,24 @@ export function updateUpgradeElement(id: UpgradeId) {
   el.classList.remove('upgrade-hidden');
 
   el.className = 'upgrade-item';
-  if (maxed) el.classList.add('maxed');
+  if (maxed)        el.classList.add('maxed');
   else if (!canAfford) el.classList.add('cannot-afford');
-
-  const payback = calcPayback(id);
-  const beforeAfter = getBeforeAfterText(id);
-  const isGoodDeal = payback !== null && payback <= 20;
-
-  const paybackHtml = payback !== null
-    ? `<span class="upgrade-payback ${isGoodDeal ? 'good-deal' : ''}">Pays back ~${payback}s</span>`
-    : '';
 
   const categoryClass = `cat-${category.toLowerCase()}`;
 
   const costHtml = maxed
     ? `<div class="upgrade-cost upgrade-prestige-locked">🔒 Prestige</div>`
     : `<div class="upgrade-cost ${canAfford ? 'affordable' : ''}">${formatMoney(cost)}</div>`;
+
+  // Inline pause/resume button — only shown when auto_clear is active (level >= 1)
+  const isAutoClear = id === 'auto_clear';
+  const showPauseBtn = isAutoClear && level >= 1;
+  const paused = getAutoMinerPaused();
+  const pauseHtml = showPauseBtn
+    ? `<button class="auto-miner-toggle-btn tool-btn ${paused ? 'paused' : ''}" title="Pause/resume auto-miner">
+         ${paused ? '⏸ OFF' : '▶ ON'}
+       </button>`
+    : '';
 
   el.innerHTML = `
     <span class="upgrade-icon">${upgrade.icon}</span>
@@ -179,14 +129,23 @@ export function updateUpgradeElement(id: UpgradeId) {
         <span class="upgrade-category ${categoryClass}">${category}</span>
       </div>
       <div class="upgrade-desc">${upgrade.desc(level)}</div>
-      ${beforeAfter ? `<div class="upgrade-before-after">${beforeAfter}</div>` : ''}
       ${level > 0 ? `<div class="upgrade-level">Lvl ${level}/${maxLvl}</div>` : ''}
     </div>
     <div class="upgrade-right">
-      ${paybackHtml}
+      ${pauseHtml}
       ${costHtml}
     </div>
   `;
+
+  // Wire up pause button after innerHTML is set
+  if (showPauseBtn) {
+    const btn = el.querySelector('.auto-miner-toggle-btn') as HTMLButtonElement;
+    btn?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setAutoMinerPaused(!getAutoMinerPaused());
+      updateUpgradeElement('auto_clear');
+    });
+  }
 }
 
 export function updateUpgradesAffordability() {
@@ -202,8 +161,8 @@ function triggerMilestoneAnimation(el: HTMLElement) {
 
 function buyUpgrade(id: UpgradeId) {
   const upgrade = UPGRADE_MAP[id];
-  const level = state.upgrades[id];
-  const maxLvl = effectiveMaxLevel(id);
+  const level   = state.upgrades[id];
+  const maxLvl  = effectiveMaxLevel(id);
   if (level >= maxLvl) return;
   if (isHidden(id)) return;
 
@@ -211,7 +170,7 @@ function buyUpgrade(id: UpgradeId) {
   if (state.money < cost) return;
 
   const wasLevelZero = level === 0;
-  const willBeMax = level + 1 >= maxLvl;
+  const willBeMax    = level + 1 >= maxLvl;
 
   state.money -= cost;
   state.upgrades[id]++;
@@ -242,6 +201,7 @@ function buyUpgrade(id: UpgradeId) {
     state.timeLeft = getStartingTime(state.prestigeCount) + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
     updateTimerDisplay();
   }
-
-  updateAutoMinerToggle(_getAutoMinerPaused());
 }
+
+// Kept for compatibility — toolbar used to call this
+export function setAutoMinerPausedGetterForUpgrades(_fn: () => boolean) { /* no-op, toolbar owns state now */ }

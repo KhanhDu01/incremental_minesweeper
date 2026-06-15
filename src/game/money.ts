@@ -1,7 +1,7 @@
-import { state, addMpsAccum } from '../state';
-import { UPGRADE_MAP } from './upgrades';
-import { updateHUD } from '../hud';
-import { updateUpgradesAffordability } from '../renderer/upgrades-ui';
+import { state, addMpsAccum } from '../state/state';
+import { UPGRADE_MAP } from '../upgrades/upgrades';
+import { updateHUD } from '../ui/hud';
+import { updateUpgradesAffordability } from '../upgrades/upgrades-ui';
 
 // ============================================================
 //  MONEY

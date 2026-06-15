@@ -1,11 +1,11 @@
-import { state, tiles, boardInitialized, setTiles, setBoardInitialized } from './state';
-import { createBoard, floodReveal, revealArea, isBoardWon } from './components/board';
-import { UPGRADE_MAP } from './components/upgrades';
-import { formatMoney } from './save';
-import { renderBoard, refreshTile, getTileEl } from './renderer/renderer';
-import { updateMineCounter, updateHUD, updatePrestigeBar, showToast, setSmiley } from './hud';
-import { calcTileEarnings, earnMoney } from './components/money';
-import { startGameTimer, stopGameTimer } from './helper/timers';
+import { state, tiles, boardInitialized, setTiles, setBoardInitialized } from '../state/state';
+import { createBoard, floodReveal, revealArea, isBoardWon } from '../board/board';
+import { UPGRADE_MAP } from '../upgrades/upgrades';
+import { formatMoney } from '../state/save';
+import { renderBoard, refreshTile, getTileEl } from '../ui/renderer';
+import { updateMineCounter, updateHUD, updatePrestigeBar, showToast, setSmiley } from '../ui/hud';
+import { calcTileEarnings, earnMoney } from './money';
+import { startGameTimer, stopGameTimer } from './timers';
 
 // ============================================================
 //  TILE INTERACTION

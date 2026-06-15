@@ -141,36 +141,33 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden; /* children handle their own scroll */
+  overflow: hidden;
   min-height: 0;
 }
 
-/* On wider screens: side-by-side */
+/* Remove the old desktop side-by-side rule entirely */
 @media (min-width: 600px) {
   #main {
-    flex-direction: row;
-    align-items: stretch;
+    flex-direction: column; /* override old row layout */
   }
 }
 
 /* ---- BOARD PANEL ---- */
 #board-panel {
-  flex-shrink: 0;
-  width: 100%;
-  background: var(--bg);
-  padding: 6px;
-  border-top: 3px solid var(--shadow-light);
-  border-left: 3px solid var(--shadow-light);
-  border-bottom: 3px solid var(--shadow-darker);
-  border-right: 3px solid var(--shadow-darker);
-  display: flex;
+  display: contents;
   flex-direction: column;
+  align-items: center;        /* center everything horizontally */
   gap: 5px;
-  /* On mobile: board panel is fixed height, upgrades scroll below */
+  padding: 10px;
+  flex: 1;
+  min-height: 0;
+  background: var(--bg);
 }
 
-/* ---- BOARD HEADER ---- */
+/* ---- BOARD HEADER / FOOTER — match container width ---- */
 #board-header {
+  width: 100%;
+  max-width: var(--board-container-size, 340px); /* synced via JS */
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -181,6 +178,13 @@ body {
   border-bottom: 2px solid var(--shadow-light);
   border-right: 2px solid var(--shadow-light);
 }
+
+#board-footer {
+  width: 100%;
+  max-width: var(--board-container-size, 340px);
+  padding: 2px 0 0;
+}
+
 
 .lcd-display {
   background: var(--lcd-bg);
@@ -221,27 +225,18 @@ body {
 
 /* ---- BOARD CONTAINER ---- */
 #board-container {
-  display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  overflow: auto;
   border-top: 3px solid var(--shadow-darker);
   border-left: 3px solid var(--shadow-darker);
   border-bottom: 3px solid var(--shadow-light);
   border-right: 3px solid var(--shadow-light);
-  overflow: auto;
-  max-height: 42vh;
-}
-
-@media (min-width: 600px) {
-  #board-container {
-    max-height: none;
-    overflow: auto;
-  }
+  box-sizing: border-box;
 }
 
 #board {
   display: grid;
   gap: 0;
+  flex-shrink: 0;
 }
 
 /* ---- TILES ---- */
@@ -328,10 +323,6 @@ body.flag-mode .tile:not(.revealed) {
 #upgrades-panel {
   flex: 1;
   min-height: 0;
-  border-top: 3px solid var(--shadow-light);
-  border-left: 3px solid var(--shadow-light);
-  border-bottom: 3px solid var(--shadow-darker);
-  border-right: 3px solid var(--shadow-darker);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -641,3 +632,97 @@ body.flag-mode .tile:not(.revealed) {
   border: 1px solid #664400;
   white-space: nowrap;
 }
+
+/* ============================================
+   INLINE AUTO-MINER TOGGLE (inside upgrade item)
+   Add these rules to style.css
+   ============================================ */
+
+/* The ▶ ON / ⏸ OFF button inside the Auto-Miner upgrade */
+.auto-miner-toggle-btn {
+  font-size: 10px;
+  padding: 2px 7px;
+  white-space: nowrap;
+  font-weight: bold;
+  letter-spacing: 0.5px;
+  background: #003300;
+  color: #44ff88;
+  border-top: 2px solid #006622;
+  border-left: 2px solid #006622;
+  border-bottom: 2px solid #001a00;
+  border-right: 2px solid #001a00;
+}
+
+.auto-miner-toggle-btn.paused {
+  background: #1a0000;
+  color: #ff6644;
+  border-top-color: #661100;
+  border-left-color: #661100;
+  border-bottom-color: #330000;
+  border-right-color: #330000;
+}
+
+.auto-miner-toggle-btn:active {
+  border-top: 2px solid #001a00;
+  border-left: 2px solid #001a00;
+  border-bottom: 2px solid #006622;
+  border-right: 2px solid #006622;
+}
+
+/* ---- TAB BAR ---- */
+#tab-bar {
+  flex-shrink: 0;
+  display: flex;
+  border-bottom: 2px solid var(--shadow-darker);
+  background: var(--bg);
+}
+
+#tab-board {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 10px;
+  gap: 5px;
+  overflow: hidden;
+}
+
+.tab-btn {
+  flex: 1;
+  font-family: var(--font-main);
+  font-size: 13px;
+  font-weight: bold;
+  padding: 6px 0;
+  background: var(--bg);
+  border: none;
+  border-bottom: 3px solid transparent;
+  cursor: pointer;
+  letter-spacing: 1px;
+  color: #404040;
+}
+
+.tab-btn.active {
+  border-bottom: 3px solid var(--accent);
+  color: var(--accent);
+  background: #d4d4d4;
+}
+
+.tab-btn:active {
+  background: #b0b0b0;
+}
+
+/* ---- TAB PANELS ---- */
+.tab-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tab-panel.hidden {
+  display: none;
+}
+

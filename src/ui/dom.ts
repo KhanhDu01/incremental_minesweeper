@@ -17,7 +17,6 @@ export let prestigeBtn: HTMLElement;
 export let prestigeInfo: HTMLElement;
 export let toastContainer: HTMLElement;
 export let flagModeBtn: HTMLElement;
-export let autoMinerToggle: HTMLElement;
 export let zoomInBtn: HTMLElement;
 export let zoomOutBtn: HTMLElement;
 export let zoomLabel: HTMLElement;
@@ -43,7 +42,6 @@ export function cacheDomRefs() {
   prestigeInfo       = document.getElementById('prestige-info')!;
   toastContainer     = document.getElementById('toast-container')!;
   flagModeBtn        = document.getElementById('flag-mode-btn')!;
-  autoMinerToggle    = document.getElementById('auto-miner-toggle')!;
   zoomInBtn          = document.getElementById('zoom-in-btn')!;
   zoomOutBtn         = document.getElementById('zoom-out-btn')!;
   zoomLabel          = document.getElementById('zoom-label')!;

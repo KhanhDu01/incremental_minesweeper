@@ -2,15 +2,28 @@
 //  MINESWEEPER CONSTRAINT-PROPAGATION SOLVER
 //  Returns true if the board can be fully solved without guessing,
 //  starting from the given revealed seed tile.
+//
+//  Performance guards:
+//  - MAX_PROPAGATION_PASSES caps how many full-grid scans we do per board.
+//  - For very large boards (>300 tiles) we skip the check entirely and
+//    return true — the fallback board is accepted as-is.
 // ============================================================
 
-import type { TileState } from '../types';
-import { neighbors } from '../components/board';
+import type { TileState } from '../state/types';
+import { neighbors } from './board';
+
+// One "pass" = one full scan of the grid. 30 passes is more than enough
+// for typical minesweeper constraint propagation to reach fixpoint.
+const MAX_PROPAGATION_PASSES = 30;
+
+// Beyond this tile count the solver becomes too slow to run 100s of times.
+// We just accept the board; solvability isn't guaranteed but the board is
+// still playable (identical to the original behaviour for unsolvable boards).
+const LARGE_BOARD_TILE_LIMIT = 250;
 
 type SolverTile = {
   isMine: boolean;
   adjacentMines: number;
-  // solver state
   revealed: boolean;
   flagged: boolean;
 };
@@ -32,7 +45,6 @@ function getNeighborCoords(r: number, c: number, rows: number, cols: number): [n
     .filter(([nr, nc]) => nr >= 0 && nr < rows && nc >= 0 && nc < cols);
 }
 
-// Flood-fill reveal on solver grid (mirrors game logic)
 function solverReveal(grid: SolverTile[][], r: number, c: number, rows: number, cols: number) {
   if (grid[r][c].revealed || grid[r][c].flagged || grid[r][c].isMine) return;
   grid[r][c].revealed = true;
@@ -43,7 +55,6 @@ function solverReveal(grid: SolverTile[][], r: number, c: number, rows: number, 
   }
 }
 
-// One pass of constraint propagation. Returns true if any progress was made.
 function propagate(grid: SolverTile[][], rows: number, cols: number): boolean {
   let progress = false;
 
@@ -58,17 +69,12 @@ function propagate(grid: SolverTile[][], rows: number, cols: number): boolean {
 
       if (remainingMines < 0) continue;
 
-      // All remaining neighbours are mines → flag them
       if (unknown.length === remainingMines && remainingMines > 0) {
         for (const [nr, nc] of unknown) {
-          if (!grid[nr][nc].flagged) {
-            grid[nr][nc].flagged = true;
-            progress = true;
-          }
+          if (!grid[nr][nc].flagged) { grid[nr][nc].flagged = true; progress = true; }
         }
       }
 
-      // All mines accounted for → reveal unknowns
       if (remainingMines === 0 && unknown.length > 0) {
         for (const [nr, nc] of unknown) {
           solverReveal(grid, nr, nc, rows, cols);
@@ -81,7 +87,6 @@ function propagate(grid: SolverTile[][], rows: number, cols: number): boolean {
   return progress;
 }
 
-// Returns true if the board can be solved from (startR, startC) without guessing
 export function isSolvable(
   tiles: TileState[][],
   rows: number,
@@ -89,18 +94,18 @@ export function isSolvable(
   startR: number,
   startC: number
 ): boolean {
-  const grid = cloneForSolver(tiles, rows, cols);
+  // Skip expensive check for large boards — accept as-is.
+  if (rows * cols > LARGE_BOARD_TILE_LIMIT) return true;
 
-  // Simulate first click
+  const grid = cloneForSolver(tiles, rows, cols);
   solverReveal(grid, startR, startC, rows, cols);
 
-  // Keep applying constraints until no more progress
-  let progressed = true;
-  while (progressed) {
-    progressed = propagate(grid, rows, cols);
+  let passes = 0;
+  while (passes < MAX_PROPAGATION_PASSES) {
+    if (!propagate(grid, rows, cols)) break;
+    passes++;
   }
 
-  // Check if all non-mine tiles are revealed
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (!grid[r][c].isMine && !grid[r][c].revealed) return false;

@@ -1,5 +1,5 @@
 import type { GameState } from './types';
-import { CONFIG, getBoardDims, getStartingTime } from '../config/config';
+import { CONFIG, getBoardDims, getStartingTime } from '../config';
 const SAVE_KEY = CONFIG.SAVE_KEY;
 
 const baseDims = getBoardDims(0);

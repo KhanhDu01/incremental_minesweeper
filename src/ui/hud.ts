@@ -1,20 +1,18 @@
-import { state, tiles, boardInitialized } from './state';
-import { formatMoney, lcdPad } from './save';
-import { countFlagged } from './components/board';
+import { state, tiles, boardInitialized } from '../state/state';
+import { formatMoney, lcdPad } from '../state/save';
+import { countFlagged } from '../board/board';
 import {
   moneyDisplay, mpsDisplay, boardsDisplay,
   mineCounterEl, timerEl, smileyBtn,
   progressBar, progressLabel,
   prestigeBar, prestigeInfo,
-  toastContainer, autoMinerToggle,
+  toastContainer,
 } from './dom';
-import { CONFIG } from '../config/config';
+import { CONFIG } from '../config';
 
 // ============================================================
 //  HUD / DISPLAY UPDATES
 // ============================================================
-
-
 
 export function updateHUD() {
   moneyDisplay.textContent = formatMoney(state.money);
@@ -56,15 +54,6 @@ export function updatePrestigeBar() {
   const pct = Math.min(100, (state.boardsCleared / required) * 100);
   progressBar.style.width = `${pct}%`;
   progressLabel.textContent = `Board ${state.boardNumber} | ${state.boardsCleared}/${required} for Prestige`;
-}
-
-export function updateAutoMinerToggle(paused: boolean) {
-  const hasAutoMiner = state.upgrades.auto_clear > 0;
-  autoMinerToggle.classList.toggle('hidden', !hasAutoMiner);
-  if (hasAutoMiner) {
-    autoMinerToggle.textContent = paused ? '🤖 OFF' : '🤖 ON';
-    autoMinerToggle.classList.toggle('paused', paused);
-  }
 }
 
 export function showToast(msg: string) {

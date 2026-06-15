@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <!-- Mobile toolbar: flag mode + zoom + auto-miner toggle + ad toggle -->
+    <!-- Mobile toolbar: flag mode + zoom + ad toggle -->
     <div id="toolbar">
       <button id="flag-mode-btn" class="tool-btn" title="Flag mode">🚩 Flag</button>
       <button id="reset-btn" class="tool-btn" title="Reset game">🔄 Reset</button>
@@ -41,63 +41,42 @@
         <span id="zoom-label">100%</span>
         <button id="zoom-in-btn" class="tool-btn" title="Zoom in">🔍+</button>
       </div>
-      <button id="auto-miner-toggle" class="tool-btn hidden" title="Pause/resume auto-miner">🤖 ON</button>
     </div>
 
     <!-- Main Game Area -->
-    <div id="main">
+    <!-- Replace the entire #main div with this -->
+    <div id="tab-bar">
+      <button id="tab-board-btn" class="tab-btn active">🎮 Board</button>
+      <button id="tab-upgrades-btn" class="tab-btn">⬆️ Upgrades</button>
+    </div>
 
-      <!-- Board Panel -->
-      <div id="board-panel">
-        <div id="board-header">
-          <div id="mine-counter" class="lcd-display">000</div>
-          <div id="smiley-btn">🙂</div>
-          <div id="timer-display" class="lcd-display">000</div>
-        </div>
-        <div id="board-container">
-          <div id="board"></div>
-        </div>
-        <div id="board-footer">
-          <div id="progress-bar-container">
-            <div id="progress-bar"></div>
-            <span id="progress-label">Board 1</span>
+    <div id="main">
+      <div id="tab-board" class="tab-panel">
+        <div id="board-panel">
+          <div id="board-header">
+            <div id="mine-counter" class="lcd-display">000</div>
+            <div id="smiley-btn">🙂</div>
+            <div id="timer-display" class="lcd-display">000</div>
+          </div>
+          <div id="board-container">
+            <div id="board"></div>
+          </div>
+          <div id="board-footer">
+            <div id="progress-bar-container">
+              <div id="progress-bar"></div>
+              <span id="progress-label">Board 1</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Upgrades Panel -->
-      <div id="upgrades-panel">
-        <div id="upgrades-header">UPGRADES</div>
-        <div id="upgrades-list"></div>
-      </div>
-
-    </div>
-
-    <!-- Prestige Bar (hidden until unlocked) -->
-    <div id="prestige-bar" class="hidden">
-      <button id="prestige-btn">⭐ PRESTIGE ⭐</button>
-      <span id="prestige-info"></span>
-    </div>
-
-    <!-- Ad Space (hidden until toggled on) -->
-    <!-- The <ins> tag must be in the HTML at load time for AdSense to detect it. -->
-    <!-- adSpace.ts calls adsbygoogle.push({}) once when the panel is first shown. -->
-    <div id="ad-space-container" class="hidden">
-      <div id="ad-space-header">
-        <span id="ad-income-label">📺 +$5/s</span>
-        <span id="ad-space-title">AD SPACE</span>
-        <button id="ad-close-btn" class="tool-btn ad-close" title="Close ads">✕</button>
-      </div>
-      <div id="ad-slot">
-        <ins class="adsbygoogle"
-             style="display:block;width:100%;height:90px"
-             data-ad-client="ca-pub-2362830220646360"
-             data-ad-slot="1591221758"
-             data-ad-format="horizontal"
-             data-full-width-responsive="true"></ins>
+      <div id="tab-upgrades" class="tab-panel hidden">
+        <div id="upgrades-panel">
+          <div id="upgrades-header">UPGRADES</div>
+          <div id="upgrades-list"></div>
+        </div>
       </div>
     </div>
-
     <!-- Toast notifications -->
     <div id="toast-container"></div>
   </div>

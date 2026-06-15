@@ -1,19 +1,25 @@
-import type { TileState } from '../types';
-import { isSolvable } from '../helper/solver';
+import type { TileState } from '../state/types';
+import { isSolvable } from './solver';
 
-const MAX_ATTEMPTS = 1000; // try up to 1000 times to get a solvable board
+// Scale attempt count inversely with board area so total work stays bounded.
+// 7×7 (49 tiles)  → ~1000 attempts
+// 10×10 (100)     → ~490
+// 13×13 (169)     → ~290
+// 16×16 (256)     → skipped by solver anyway (>250 tile limit)
+function maxAttempts(rows: number, cols: number): number {
+  return Math.max(20, Math.floor(50_000 / (rows * cols)));
+}
 
 export function createBoard(rows: number, cols: number, mineCount: number, safeR: number, safeC: number): TileState[][] {
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+  const attempts = maxAttempts(rows, cols);
+  for (let attempt = 0; attempt < attempts; attempt++) {
     const board = generateBoard(rows, cols, mineCount, safeR, safeC);
     if (isSolvable(board, rows, cols, safeR, safeC)) return board;
   }
-  // Fallback: return last attempt even if not perfectly solvable
   return generateBoard(rows, cols, mineCount, safeR, safeC);
 }
 
 function generateBoard(rows: number, cols: number, mineCount: number, safeR: number, safeC: number): TileState[][] {
-  // Place mines avoiding the first-click area
   const tiles: TileState[][] = Array.from({ length: rows }, () =>
     Array.from({ length: cols }, () => ({
       isMine: false,
@@ -46,7 +52,6 @@ function generateBoard(rows: number, cols: number, mineCount: number, safeR: num
     }
   }
 
-  // Compute adjacentMines
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (tiles[r][c].isMine) continue;
@@ -71,7 +76,6 @@ export function neighbors(): [number, number][] {
   ];
 }
 
-// Flood fill reveal - returns list of newly revealed [r,c] positions
 export function floodReveal(
   tiles: TileState[][],
   startR: number,
@@ -108,7 +112,6 @@ export function floodReveal(
   return revealed;
 }
 
-// Reveal a rectangular area (for Big Shovel upgrade)
 export function revealArea(
   tiles: TileState[][],
   centerR: number,
@@ -134,7 +137,6 @@ export function revealArea(
   return allRevealed;
 }
 
-// Get all unrevealed, non-flagged, non-mine tiles
 export function getSafeTiles(tiles: TileState[][], rows: number, cols: number): [number, number][] {
   const safe: [number, number][] = [];
   for (let r = 0; r < rows; r++) {
@@ -146,7 +148,6 @@ export function getSafeTiles(tiles: TileState[][], rows: number, cols: number): 
   return safe;
 }
 
-// Get all unrevealed, non-flagged mine tiles
 export function getMineTiles(tiles: TileState[][], rows: number, cols: number): [number, number][] {
   const mines: [number, number][] = [];
   for (let r = 0; r < rows; r++) {
