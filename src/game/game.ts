@@ -5,11 +5,12 @@ import { renderBoard, setTileHandlers } from '../ui/renderer';
 import { onTileClick, onTileRightClick, setFlagModeGetter, setNewGameCallback } from './input';
 import { updateMineCounter, updateTimerDisplay, updateHUD, updatePrestigeBar } from '../ui/hud';
 import { updateUpgradesAffordability, renderUpgrades, setAutoMinerPausedGetterForUpgrades } from '../upgrades/upgrades-ui';
-import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMinerPausedGetter, stopAllTimers } from './timers';
+import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMinerPausedGetter, stopAllTimers, setBoardTransitioning } from './timers';
 import { stopGameTimer } from './timers';
 import { prestige, setNewGameCallbackForPrestige } from './prestige';
 import { initToolbar, getFlagMode, getAutoMinerPaused, autoFitZoom, squareBoardContainer } from '../ui/toolbar';
 import { toggleAdSpace } from '../ui/adSpace';
+import { initDevPanel } from '../ui/devPanel';
 import { getStartingTime } from '../config';
 
 // ============================================================
@@ -18,6 +19,7 @@ import { getStartingTime } from '../config';
 
 export function newGame() {
   stopGameTimer();
+  setBoardTransitioning(false); // clear any stale transition lock
   setTiles([]);
   setBoardInitialized(false);
   state.timeLeft = getStartingTime(state.prestigeCount) + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
@@ -29,7 +31,7 @@ export function newGame() {
   updateUpgradesAffordability();
   updatePrestigeBar();
   squareBoardContainer();
-  autoFitZoom(); // auto-fit zoom whenever a new board starts (board may have grown)
+  autoFitZoom();
   requestAnimationFrame(() => {
     squareBoardContainer();
     autoFitZoom();
@@ -66,10 +68,11 @@ export function init() {
   if (adCloseBtn)  adCloseBtn.addEventListener('click', () => toggleAdSpace(true));
 
   initToolbar();
-  initTabs();        // tabs wired last, after everything else
+  initDevPanel();  // adds 🛠️ button to toolbar
+  initTabs();
   renderUpgrades();
   requestAnimationFrame(() => {
-    requestAnimationFrame(() => {   // double-rAF ensures layout is complete
+    requestAnimationFrame(() => {
       newGame();
       startSaveTimer();
       startMpsTimer();

@@ -28,19 +28,24 @@ export type Upgrade = {
   icon: string;
   baseCost: number;
   costMultiplier: number;
-  effect: (level: number) => number; // returns the effective value at given level
+  /** Returns the effective value at the given level.
+   *  For speed upgrades this is the interval in ms for one bot;
+   *  the timer system reads botCount separately. */
+  effect: (level: number) => number;
+  /** Optional hard max level. Only set for speed upgrades (bot system). */
+  hardMax?: number;
 };
 
 export type GameState = {
   money: number;
   totalMoney: number;
   boardsCleared: number;
-  boardNumber: number;  // current board index (grows with prestige)
+  boardNumber: number;
   prestigeCount: number;
   prestigeMultiplier: number;
   phase: GamePhase;
   timeLeft: number;
-  upgrades: Record<UpgradeId, number>; // level per upgrade
+  upgrades: Record<UpgradeId, number>;
   // Board dimensions grow with prestige
   cols: number;
   rows: number;

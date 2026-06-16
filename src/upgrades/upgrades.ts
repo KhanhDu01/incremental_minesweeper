@@ -1,15 +1,15 @@
 import type { Upgrade, UpgradeId } from '../state/types';
-import { getEffectiveMaxLevel } from '../config';
+import { CONFIG, getTimerUpgradeSecondsPerLevel } from '../config';
 import { state } from '../state/state';
 
 // ============================================================
 //  UPGRADES
 //
-//  Cost philosophy:
-//  - costMultiplier ≤ 1.5 for most upgrades (vs old 1.75–3.2)
-//  - Speed upgrades use additive cost steps instead of exponential
-//    so they stay purchaseable without breaking the bank
-//  - Board/automation upgrades slightly pricier than income ones
+//  No upgrade max levels — players can keep buying forever.
+//  Exception: auto_clear_speed / auto_flag_speed use a "bot" system:
+//    every BOT_LEVEL_INTERVAL levels, a new bot is added and
+//    the speed resets to 5000ms. The effective interval per bot
+//    is still a function of (level % BOT_LEVEL_INTERVAL).
 // ============================================================
 
 export const UPGRADES: Upgrade[] = [
@@ -35,10 +35,14 @@ export const UPGRADES: Upgrade[] = [
     id: 'longer_timer',
     name: 'Overtime',
     icon: '⏰',
-    desc: (lvl) => `+${lvl * 5}s timer`,
+    // Seconds per level is dynamic — call getTimerUpgradeSecondsPerLevel at runtime
+    desc: (lvl) => {
+      const sPerLvl = getTimerUpgradeSecondsPerLevel(state.prestigeCount);
+      return `+${lvl * sPerLvl}s timer (+${sPerLvl}s/level)`;
+    },
     baseCost: 75,
     costMultiplier: 1.5,
-    effect: (lvl) => lvl * 5,
+    effect: (lvl) => lvl * getTimerUpgradeSecondsPerLevel(state.prestigeCount),
   },
   {
     id: 'reveal_area',
@@ -62,11 +66,17 @@ export const UPGRADES: Upgrade[] = [
     id: 'auto_flag_speed',
     name: 'Faster Detector',
     icon: '📡',
-    // Linear cost steps: 200, 400, 600, 800 … much more gradual than exponential
-    desc: (lvl) => `Auto-flags every ${autoSpeedMs(lvl)}ms`,
+    desc: (lvl) => {
+      const bots = Math.floor(lvl / CONFIG.BOT_LEVEL_INTERVAL) + 1;
+      const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
+      return `${bots} bot${bots > 1 ? 's' : ''} @ ${autoSpeedMs(speedLvl)}ms`;
+    },
     baseCost: 200,
     costMultiplier: 1.35,
-    effect: (lvl) => autoSpeedMs(lvl),
+    effect: (lvl) => {
+      const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
+      return autoSpeedMs(speedLvl);
+    },
   },
   {
     id: 'auto_clear',
@@ -81,30 +91,43 @@ export const UPGRADES: Upgrade[] = [
     id: 'auto_clear_speed',
     name: 'Faster Miner',
     icon: '⚡',
-    desc: (lvl) => `Auto-clears every ${autoSpeedMs(lvl)}ms`,
+    desc: (lvl) => {
+      const bots = Math.floor(lvl / CONFIG.BOT_LEVEL_INTERVAL) + 1;
+      const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
+      return `${bots} bot${bots > 1 ? 's' : ''} @ ${autoSpeedMs(speedLvl)}ms`;
+    },
     baseCost: 400,
     costMultiplier: 1.35,
-    effect: (lvl) => autoSpeedMs(lvl),
+    effect: (lvl) => {
+      const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
+      return autoSpeedMs(speedLvl);
+    },
   },
 ];
 
 /**
-  * Speed curve for auto timers.
- * Each level multiplies the interval by 0.65 (35% faster per level).
- * Level 0: 5000ms, 1: 3250ms, 2: 2112ms, 3: 1373ms, 4: 893ms,
- * 5: 580ms, 6: 377ms, 7: 245ms, 8: 159ms, 9: 103ms, 10: 67ms ...
- * No hard floor — it keeps getting faster, just with diminishing returns.
+ * Speed curve for auto timers (per bot).
+ * Level 0 (new bot): 5000ms, then speeds up each level.
+ * Resets every BOT_LEVEL_INTERVAL levels when a new bot is added.
  */
-function autoSpeedMs(lvl: number): number {
-  return Math.max(1, Math.round(5000 * Math.pow(0.65, lvl)));
+function autoSpeedMs(speedLvl: number): number {
+  return Math.max(50, Math.round(5000 * Math.pow(0.65, speedLvl)));
+}
+
+export function getBotCount(id: 'auto_clear_speed' | 'auto_flag_speed'): number {
+  const lvl = state.upgrades[id];
+  if (lvl === 0) return 1; // default 1 bot at base speed
+  return Math.floor(lvl / CONFIG.BOT_LEVEL_INTERVAL) + 1;
 }
 
 export const UPGRADE_MAP: Record<UpgradeId, Upgrade> = Object.fromEntries(
   UPGRADES.map(u => [u.id, u])
 ) as Record<UpgradeId, Upgrade>;
 
+/** No hard max for most upgrades — returns Infinity.
+ *  Speed upgrades also have no hard cap now (bot system handles it). */
 export function effectiveMaxLevel(_id: UpgradeId): number {
-  return getEffectiveMaxLevel(state.prestigeCount);
+  return Infinity;
 }
 
 export function upgradeCost(upgrade: Upgrade, currentLevel: number): number {

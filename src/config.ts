@@ -1,8 +1,6 @@
 // ============================================================
 //  CONFIG
 //  All game constants live here.
-//  Prestige scaling is expressed as per-prestige-level deltas
-//  so nothing is hard-coded in game logic.
 // ============================================================
 
 export const CONFIG = {
@@ -18,27 +16,36 @@ export const CONFIG = {
   // ---- Base board (prestige 0) ----
   baseCols: 7,
   baseRows: 7,
-  baseMineRatio: 0.20,   // fraction of tiles that are mines
-  baseTimeLeft: 15,      // seconds
+  baseMineRatio: 0.20,
+  baseTimeLeft: 15,
 
   // ---- Prestige scaling (added per prestige level) ----
   prestigeColsPerLevel: 3,
   prestigeRowsPerLevel: 3,
-  prestigeTimePerLevel: 0,   // +0s per prestige level
+  prestigeTimePerLevel: 0,
 
-  // ---- Upgrade max-level scaling ----
-  // effectiveMax = upgradeBaseMax + prestigeCount * upgradeMaxLevelPerPrestige
-  upgradeBaseMax: 3,           // levels allowed at prestige 0
-  upgradeMaxLevelPerPrestige: 2,
+  // ---- No max level cap on upgrades (except speed bots) ----
+  // Speed upgrades (auto_clear_speed, auto_flag_speed) have a bot system:
+  // every BOT_LEVEL_INTERVAL levels add a new bot and reset speed
+  BOT_LEVEL_INTERVAL: 10,   // every 10 levels = 1 new bot, speed resets
+  BOT_SPEED_LEVELS: 10,     // levels before the speed repeats per bot
 
-  // ---- Prestige requirement ----
-  PRESTIGE_BOARDS_REQUIRED: 5,
+  // ---- Prestige thresholds ----
+  // boards cleared → prestige levels earned per threshold crossing
+  // Format: [boardsRequired, prestigeLevelsGranted]
+  PRESTIGE_THRESHOLDS: [
+    [5,  1],
+    [15, 2],
+    [30, 3],
+    [55, 4],
+    [90, 5],
+  ] as [number, number][],
 
   // ---- Persistence ----
-  SAVE_KEY: 'incremental_minesweeper_save_v2',
+  SAVE_KEY: 'incremental_minesweeper_save_v3',
 
   // ---- Ad space ----
-  adPassiveIncomePerSec: 5,   // in-game $/s while ad panel is visible
+  adPassiveIncomePerSec: 5,
 };
 
 // ---- Derived helpers (pure functions, no state) ----
@@ -54,9 +61,29 @@ export function getStartingTime(prestigeCount: number): number {
   return CONFIG.baseTimeLeft + prestigeCount * CONFIG.prestigeTimePerLevel;
 }
 
-/** Returns the effective max level for an upgrade at the given prestige level.
- *  absoluteMax = the hard cap defined on the Upgrade itself.
- */
-export function getEffectiveMaxLevel(prestigeCount: number): number {
-  return CONFIG.upgradeBaseMax + prestigeCount * CONFIG.upgradeMaxLevelPerPrestige;
+/** No longer used for upgrade cap — upgrades are unlimited (except speed bots).
+ *  Kept so old call-sites compile without errors. */
+export function getEffectiveMaxLevel(_prestigeCount: number): number {
+  return Infinity;
+}
+
+/** How many prestige levels should be earned for a given boards-cleared count?
+ *  Returns 0 if the player hasn't hit the next threshold yet.
+ *  Accumulates: if boardsCleared crosses multiple thresholds at once, sums them. */
+export function calcPrestigeLevelsForBoards(boardsCleared: number): number {
+  let total = 0;
+  for (const [req, lvls] of CONFIG.PRESTIGE_THRESHOLDS) {
+    if (boardsCleared >= req) total = lvls; // take the highest tier reached
+  }
+  return total;
+}
+
+/** Returns the prestige multiplier for a given prestige count. */
+export function getPrestigeMultiplier(prestigeCount: number): number {
+  return 1 + prestigeCount * 0.5;
+}
+
+/** For the "Overtime" upgrade: more seconds per level, scaled up by prestige. */
+export function getTimerUpgradeSecondsPerLevel(prestigeCount: number): number {
+  return 5 + prestigeCount * 2; // e.g. prestige 0→5s, 1→7s, 2→9s, …
 }

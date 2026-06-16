@@ -5,17 +5,15 @@ import { formatMoney } from '../state/save';
 import { renderBoard, refreshTile, getTileEl } from '../ui/renderer';
 import { updateMineCounter, updateHUD, updatePrestigeBar, showToast, setSmiley } from '../ui/hud';
 import { calcTileEarnings, earnMoney } from './money';
-import { startGameTimer, stopGameTimer } from './timers';
+import { startGameTimer, stopGameTimer, setBoardTransitioning } from './timers';
 
 // ============================================================
 //  TILE INTERACTION
 // ============================================================
 
-// Injected from toolbar.ts to avoid circular deps
 let _getFlagMode: () => boolean = () => false;
 export function setFlagModeGetter(fn: () => boolean) { _getFlagMode = fn; }
 
-// Injected from game.ts (newGame lives there to avoid circular deps)
 let _newGame: () => void = () => {};
 export function setNewGameCallback(fn: () => void) { _newGame = fn; }
 
@@ -24,7 +22,6 @@ export function onTileClick(r: number, c: number) {
   const tile = tiles[r][c];
   if (tile.isRevealed) return;
 
-  // Flag mode: tap toggles flag
   if (_getFlagMode()) {
     if (!boardInitialized) return;
     tile.isFlagged = !tile.isFlagged;
@@ -35,7 +32,6 @@ export function onTileClick(r: number, c: number) {
 
   if (tile.isFlagged) return;
 
-  // First click: generate board (safe zone) and start timer
   if (!boardInitialized) {
     setTiles(createBoard(state.rows, state.cols, state.mineCount, r, c));
     setBoardInitialized(true);
@@ -95,7 +91,11 @@ function hitMine(r: number, c: number) {
   }
 
   showToast('💥 BOOM! Try again!');
-  setTimeout(() => _newGame(), 2000);
+  setBoardTransitioning(true);
+  setTimeout(() => {
+    setBoardTransitioning(false);
+    _newGame();
+  }, 2000);
 }
 
 // ============================================================
@@ -113,7 +113,7 @@ export function checkWin() {
   state.boardNumber++;
 
   const bonusMultiplier = UPGRADE_MAP['board_clear_bonus'].effect(state.upgrades.board_clear_bonus);
-  const base = state.mineCount * 20 * state.prestigeMultiplier;
+  const base  = state.mineCount * 20 * state.prestigeMultiplier;
   const bonus = Math.floor(base * (bonusMultiplier + 1));
 
   earnMoney(bonus);
@@ -121,5 +121,11 @@ export function checkWin() {
 
   updateHUD();
   updatePrestigeBar();
-  setTimeout(() => _newGame(), 1500);
+
+  // Lock out bots for the 1.5s celebration window, then start next board.
+  setBoardTransitioning(true);
+  setTimeout(() => {
+    setBoardTransitioning(false);
+    _newGame();
+  }, 1500);
 }

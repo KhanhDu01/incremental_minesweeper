@@ -18,7 +18,7 @@ export function setState(next: Partial<GameState>) {
 export function resetState() {
   const fresh = resetGame();
   Object.assign(state, fresh);
-  state.upgrades = { ...fresh.upgrades }; // ensure nested upgrades object is also reset
+  state.upgrades = { ...fresh.upgrades };
 }
 
 export function setTiles(next: TileState[][]) {
@@ -33,4 +33,7 @@ export function setBoardInitialized(val: boolean) {
 export let mpsAccum = 0;
 export function addMpsAccum(amount: number) {
   mpsAccum += amount;
+}
+export function resetMpsAccum() {
+  mpsAccum = 0;
 }

@@ -11,7 +11,6 @@ export function setTileHandlers(click: ClickHandler, rightClick: ClickHandler) {
   _onTileRightClick = rightClick;
 }
 
-// Below this tile size, switch to canvas rendering
 const CANVAS_THRESHOLD_PX = 6;
 
 let usingCanvas = false;
@@ -94,34 +93,28 @@ export function drawCanvas() {
       const x = c * px;
       const y = r * px;
 
-      // Fill base color
       ctx.fillStyle = tileBaseColor(tile);
       ctx.fillRect(x, y, px, px);
 
-      // Only draw border detail if tiles are big enough to see it
       if (px >= 3) {
         if (!tile.isRevealed) {
-          // Win95 raised look: light top-left, dark bottom-right
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(x, y, px - 1, 1);         // top
-          ctx.fillRect(x, y, 1, px - 1);         // left
+          ctx.fillRect(x, y, px - 1, 1);
+          ctx.fillRect(x, y, 1, px - 1);
           ctx.fillStyle = '#808080';
-          ctx.fillRect(x + px - 1, y, 1, px);    // right
-          ctx.fillRect(x, y + px - 1, px, 1);    // bottom
+          ctx.fillRect(x + px - 1, y, 1, px);
+          ctx.fillRect(x, y + px - 1, px, 1);
         } else {
-          // Revealed: subtle 1px dark border
           ctx.fillStyle = '#909090';
           ctx.fillRect(x, y, px, 1);
           ctx.fillRect(x, y, 1, px);
         }
       } else {
-        // At 1-2px just draw a 1px separator so grid is visible
         ctx.fillStyle = '#404040';
         ctx.fillRect(x + px - 1, y, 1, px);
         ctx.fillRect(x, y + px - 1, px, 1);
       }
 
-      // Flag dot
       if (tile.isFlagged && !tile.isRevealed && px >= 2) {
         ctx.fillStyle = '#ff4400';
         const dot = Math.max(1, Math.floor(px * 0.4));
@@ -134,17 +127,17 @@ export function drawCanvas() {
 
 function tileBaseColor(tile: TileState): string {
   if (tile.isRevealed) {
-    if (tile.isMine)            return '#cc0000'; // red
-    if (tile.adjacentMines > 0) return '#a0a0a0'; // mid grey — has a number
-    return '#e8e8e8';                              // light grey — empty/cleared
+    if (tile.isMine)            return '#cc0000';
+    if (tile.adjacentMines > 0) return '#a0a0a0';
+    return '#e8e8e8';
   }
   if (tile.isFlagged) return '#c04000';
-  return '#5a5a5a'; // dark grey — unrevealed, clearly distinct from revealed
+  return '#5a5a5a';
 }
 
 function tileColor(tile: TileState): string {
   if (tile.isRevealed) {
-    if (tile.isMine)           return '#ff0000';
+    if (tile.isMine)            return '#ff0000';
     if (tile.adjacentMines > 0) return '#888888';
     return '#c8c8c8';
   }
@@ -152,7 +145,7 @@ function tileColor(tile: TileState): string {
   return '#c0c0c0';
 }
 
-// ---- DOM rendering (existing logic, unchanged) ----
+// ---- DOM rendering ----
 
 function renderDom(rows: number, cols: number, tileSize: number) {
   boardEl.style.gridTemplateColumns = `repeat(${cols}, var(--tile-size))`;
@@ -198,13 +191,12 @@ export function updateTileElement(el: HTMLElement, tile: TileState) {
 }
 
 export function getTileEl(r: number, c: number): HTMLElement | null {
-  if (usingCanvas) return null; // canvas mode — no individual tile elements
+  if (usingCanvas) return null;
   return boardEl.querySelector(`[data-r="${r}"][data-c="${c}"]`);
 }
 
 export function refreshTile(r: number, c: number) {
   if (usingCanvas) {
-    // Redraw just this one tile on the canvas
     if (!canvasEl) return;
     const ctx = canvasEl.getContext('2d');
     if (!ctx) return;
@@ -217,13 +209,26 @@ export function refreshTile(r: number, c: number) {
   if (el) updateTileElement(el, tiles[r][c]);
 }
 
+// Long-press: 150ms feels responsive on mobile
 function setupLongPress(el: HTMLElement, callback: () => void) {
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let moved = false;
+
   el.addEventListener('touchstart', () => {
-    timer = setTimeout(() => { callback(); timer = null; }, 500);
+    moved = false;
+    timer = setTimeout(() => {
+      if (!moved) callback();
+      timer = null;
+    }, 150);
   }, { passive: true });
-  el.addEventListener('touchend',  () => { if (timer) { clearTimeout(timer); timer = null; } });
-  el.addEventListener('touchmove', () => { if (timer) { clearTimeout(timer); timer = null; } });
+
+  el.addEventListener('touchmove', () => {
+    moved = true;
+    if (timer) { clearTimeout(timer); timer = null; }
+  }, { passive: true });
+
+  el.addEventListener('touchend',   () => { if (timer) { clearTimeout(timer); timer = null; } });
+  el.addEventListener('touchcancel',() => { if (timer) { clearTimeout(timer); timer = null; } });
 }
 
 export function refreshAllTiles() {

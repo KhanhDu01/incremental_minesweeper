@@ -8,7 +8,7 @@ import {
   prestigeBar, prestigeInfo,
   toastContainer,
 } from './dom';
-import { CONFIG } from '../config';
+import { CONFIG, calcPrestigeLevelsForBoards, getPrestigeMultiplier } from '../config';
 
 // ============================================================
 //  HUD / DISPLAY UPDATES
@@ -39,21 +39,44 @@ export function setSmiley(emoji: string) {
 }
 
 export function updatePrestigeBar() {
-  const required = CONFIG.PRESTIGE_BOARDS_REQUIRED * (state.prestigeCount + 1);
-  const canPrestige = state.boardsCleared >= required;
+  const earned = calcPrestigeLevelsForBoards(state.boardsCleared);
+  const canP   = earned > state.prestigeCount;
 
-  if (canPrestige) {
+  // Find next threshold to show progress toward
+  const thresholds = CONFIG.PRESTIGE_THRESHOLDS;
+  let nextThreshold = thresholds[thresholds.length - 1][0];
+  let nextLevels    = thresholds[thresholds.length - 1][1];
+  for (const [req, lvls] of thresholds) {
+    if (state.boardsCleared < req) {
+      nextThreshold = req;
+      nextLevels    = lvls;
+      break;
+    }
+  }
+
+  if (canP) {
     prestigeBar.classList.remove('hidden');
+    const levelsGained = earned - state.prestigeCount;
+    const newMult = getPrestigeMultiplier(earned);
+    const newDims = {
+      cols: CONFIG.baseCols + earned * CONFIG.prestigeColsPerLevel,
+      rows: CONFIG.baseRows + earned * CONFIG.prestigeRowsPerLevel,
+    };
     prestigeInfo.textContent =
-      `Prestige ${state.prestigeCount + 1} → ${state.cols + 3}×${state.rows + 2} board, ` +
-      `x${(1 + (state.prestigeCount + 1) * 0.5).toFixed(1)} earnings`;
+      `⭐ ${levelsGained > 1 ? `+${levelsGained} prestige levels` : '+1 prestige level'} ready! ` +
+      `→ ${newDims.cols}×${newDims.rows} board · x${newMult.toFixed(1)} earnings`;
   } else {
     prestigeBar.classList.add('hidden');
   }
 
-  const pct = Math.min(100, (state.boardsCleared / required) * 100);
+  const pct = Math.min(100, (state.boardsCleared / nextThreshold) * 100);
   progressBar.style.width = `${pct}%`;
-  progressLabel.textContent = `Board ${state.boardNumber} | ${state.boardsCleared}/${required} for Prestige`;
+
+  const prestigeText = state.prestigeCount > 0
+    ? ` · ⭐${state.prestigeCount} · x${state.prestigeMultiplier.toFixed(1)}`
+    : '';
+  progressLabel.textContent =
+    `Board ${state.boardNumber}${prestigeText} | ${state.boardsCleared}/${nextThreshold} (→+${nextLevels}✨)`;
 }
 
 export function showToast(msg: string) {

@@ -1,6 +1,6 @@
 import { state, tiles, boardInitialized, setTiles, setBoardInitialized, mpsAccum } from '../state/state';
 import { createBoard, floodReveal, getSafeTiles, getMineTiles } from '../board/board';
-import { UPGRADE_MAP } from '../upgrades/upgrades';
+import { UPGRADE_MAP, getBotCount } from '../upgrades/upgrades';
 import { saveGame } from '../state/save';
 import { renderBoard, refreshAllTiles } from '../ui/renderer';
 import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley, updateHUD } from '../ui/hud';
@@ -14,11 +14,16 @@ import { updateUpgradesAffordability } from '../upgrades/upgrades-ui';
 // ============================================================
 
 let gameTimer: ReturnType<typeof setInterval> | null = null;
-let autoClearTimer: ReturnType<typeof setInterval> | null = null;
-let autoFlagTimer: ReturnType<typeof setInterval> | null = null;
+let autoClearTimers: ReturnType<typeof setInterval>[] = [];
+let autoFlagTimers:  ReturnType<typeof setInterval>[] = [];
 let saveTimer: ReturnType<typeof setInterval> | null = null;
-let mpsTimer: ReturnType<typeof setInterval> | null = null;
+let mpsTimer:  ReturnType<typeof setInterval> | null = null;
 let renderPending = false;
+
+// Guards against bot + timeout both calling newGame after a win/loss
+let boardTransitioning = false;
+export function setBoardTransitioning(val: boolean) { boardTransitioning = val; }
+export function isBoardTransitioning() { return boardTransitioning; }
 
 let _newGame: () => void = () => {};
 export function setNewGameCallbackForTimers(fn: () => void) { _newGame = fn; }
@@ -31,17 +36,17 @@ export function scheduleRender() {
   renderPending = true;
   requestAnimationFrame(() => {
     renderPending = false;
-    // Import these at the top of the file
     updateMineCounter();
     updateHUD();
     updateUpgradesAffordability();
-    refreshAllTiles(); // re-draw board if in canvas mode
+    refreshAllTiles();
   });
 }
 
 // ---- Game countdown ----
 
 export function startGameTimer() {
+  if (gameTimer) clearInterval(gameTimer);
   gameTimer = setInterval(() => {
     if (state.phase !== 'playing') return;
     state.timeLeft--;
@@ -50,7 +55,11 @@ export function startGameTimer() {
       state.phase = 'lost';
       stopGameTimer();
       setSmiley('😵');
-      setTimeout(() => _newGame(), 1500);
+      boardTransitioning = true;
+      setTimeout(() => {
+        boardTransitioning = false;
+        _newGame();
+      }, 1500);
     }
   }, 1000);
 }
@@ -61,17 +70,29 @@ export function stopGameTimer() {
 
 export function stopAllTimers() {
   stopGameTimer();
-  if (autoClearTimer) { clearInterval(autoClearTimer); autoClearTimer = null; }
-  if (autoFlagTimer)  { clearInterval(autoFlagTimer);  autoFlagTimer  = null; }
-  if (saveTimer)      { clearInterval(saveTimer);      saveTimer      = null; }
-  if (mpsTimer)       { clearInterval(mpsTimer);       mpsTimer       = null; }
+  stopAutoClearTimers();
+  stopAutoFlagTimers();
+  if (saveTimer) { clearInterval(saveTimer); saveTimer = null; }
+  if (mpsTimer)  { clearInterval(mpsTimer);  mpsTimer  = null; }
+}
+
+function stopAutoClearTimers() {
+  autoClearTimers.forEach(t => clearInterval(t));
+  autoClearTimers = [];
+}
+
+function stopAutoFlagTimers() {
+  autoFlagTimers.forEach(t => clearInterval(t));
+  autoFlagTimers = [];
 }
 
 // ---- Auto-start board ----
 
 export function autoStartBoard() {
+  if (boardTransitioning) return;      // wait for the win/loss delay
   if (state.phase === 'playing') return;
 
+  boardTransitioning = true;
   setTiles([]);
   setBoardInitialized(false);
   state.timeLeft = getStartingTime(state.prestigeCount) + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
@@ -87,82 +108,108 @@ export function autoStartBoard() {
   state.phase = 'playing';
   startGameTimer();
   renderBoard();
+  boardTransitioning = false;
 }
 
-// ---- Auto-clear ----
+// ---- Auto-clear (supports multiple bots) ----
 
 export function startAutoClearTimer() {
-  if (autoClearTimer) clearInterval(autoClearTimer);
-  const interval = UPGRADE_MAP['auto_clear_speed'].effect(state.upgrades.auto_clear_speed);
-  const tilesPerTick = UPGRADE_MAP['auto_clear'].effect(state.upgrades.auto_clear);
+  stopAutoClearTimers();
 
-  autoClearTimer = setInterval(() => {
-    if (_getAutoMinerPaused()) return;
-    if (state.phase === 'idle' || state.phase === 'won' || state.phase === 'lost') {
-      autoStartBoard();
-      return;
-    }
-    if (!boardInitialized) return;
+  const clearLevel = state.upgrades.auto_clear;
+  if (clearLevel === 0) return;
 
-    const safe = getSafeTiles(tiles, state.rows, state.cols);
-    if (safe.length === 0) return;
+  const interval     = UPGRADE_MAP['auto_clear_speed'].effect(state.upgrades.auto_clear_speed);
+  const tilesPerTick = UPGRADE_MAP['auto_clear'].effect(clearLevel);
+  const botCount     = state.upgrades.auto_clear_speed > 0
+    ? getBotCount('auto_clear_speed')
+    : 1;
 
-    let cleared = 0;
-    for (let i = 0; i < Math.min(tilesPerTick, safe.length); i++) {
-      const [r, c] = safe[i];
-      const revealed = floodReveal(tiles, r, c, state.rows, state.cols);
-      // Just mutate state — no DOM touches here
-      cleared += revealed.length;
-    }
+  for (let bot = 0; bot < botCount; bot++) {
+    const t = setInterval(() => {
+      if (_getAutoMinerPaused()) return;
 
-    if (cleared > 0) {
-      earnMoneyQuiet(cleared); // see below
-      checkWin();
-      scheduleRender();        // one rAF for all DOM work
-    }
-  }, interval);
+      if (state.phase === 'idle' || state.phase === 'won' || state.phase === 'lost') {
+        // Only bot 0 triggers new games
+        if (bot === 0) autoStartBoard();
+        return;
+      }
+      if (!boardInitialized) return;
+
+      const safe = getSafeTiles(tiles, state.rows, state.cols);
+      if (safe.length === 0) return;
+
+      let cleared = 0;
+      for (let i = 0; i < Math.min(tilesPerTick, safe.length); i++) {
+        const [r, c] = safe[i];
+        const revealed = floodReveal(tiles, r, c, state.rows, state.cols);
+        cleared += revealed.length;
+      }
+
+      if (cleared > 0) {
+        earnMoneyQuiet(cleared);
+        checkWin();
+        scheduleRender();
+      }
+    }, interval);
+
+    autoClearTimers.push(t);
+  }
 }
 
-// ---- Auto-flag ----
+// ---- Auto-flag (supports multiple bots) ----
 
 export function startAutoFlagTimer() {
-  if (autoFlagTimer) clearInterval(autoFlagTimer);
-  const interval = UPGRADE_MAP['auto_flag_speed'].effect(state.upgrades.auto_flag_speed);
-  const flagsPerTick = UPGRADE_MAP['auto_flag'].effect(state.upgrades.auto_flag);
+  stopAutoFlagTimers();
 
-  autoFlagTimer = setInterval(() => {
-    if (_getAutoMinerPaused()) return;
-    if (state.phase === 'idle' || state.phase === 'won' || state.phase === 'lost') {
-      autoStartBoard();
-      return;
-    }
-    if (!boardInitialized) return;
+  const flagLevel = state.upgrades.auto_flag;
+  if (flagLevel === 0) return;
 
-    const mines = getMineTiles(tiles, state.rows, state.cols);
-    if (mines.length === 0) return;
+  const interval     = UPGRADE_MAP['auto_flag_speed'].effect(state.upgrades.auto_flag_speed);
+  const flagsPerTick = UPGRADE_MAP['auto_flag'].effect(flagLevel);
+  const botCount     = state.upgrades.auto_flag_speed > 0
+    ? getBotCount('auto_flag_speed')
+    : 1;
 
-    let flagged = 0;
-    for (let i = 0; i < Math.min(flagsPerTick, mines.length); i++) {
-      tiles[mines[i][0]][mines[i][1]].isFlagged = true;
-      flagged++;
-    }
+  for (let bot = 0; bot < botCount; bot++) {
+    const t = setInterval(() => {
+      if (_getAutoMinerPaused()) return;
 
-    if (flagged > 0) {
-      earnMoneyQuiet(flagged);
-      scheduleRender();
-    }
-  }, interval);
+      if (state.phase === 'idle' || state.phase === 'won' || state.phase === 'lost') {
+        if (bot === 0) autoStartBoard();
+        return;
+      }
+      if (!boardInitialized) return;
+
+      const mines = getMineTiles(tiles, state.rows, state.cols);
+      if (mines.length === 0) return;
+
+      let flagged = 0;
+      for (let i = 0; i < Math.min(flagsPerTick, mines.length); i++) {
+        tiles[mines[i][0]][mines[i][1]].isFlagged = true;
+        flagged++;
+      }
+
+      if (flagged > 0) {
+        earnMoneyQuiet(flagged);
+        scheduleRender();
+      }
+    }, interval);
+
+    autoFlagTimers.push(t);
+  }
 }
 
 // ---- MPS ticker ----
-
-let mpsLastSnapshot = 0;
+// Snapshots the accumulator every second to compute rate.
 
 export function startMpsTimer() {
   if (mpsTimer) clearInterval(mpsTimer);
+  let lastAccum = mpsAccum;
   mpsTimer = setInterval(() => {
-    const rate = mpsAccum - mpsLastSnapshot;
-    mpsLastSnapshot = mpsAccum;
+    const current = mpsAccum;
+    const rate = current - lastAccum;
+    lastAccum = current;
     updateMpsDisplay(rate);
   }, 1000);
 }
