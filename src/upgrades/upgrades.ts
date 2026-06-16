@@ -84,7 +84,7 @@ export const UPGRADES: Upgrade[] = [
     icon: '🤖',
     desc: (lvl) => lvl === 0 ? 'Unlocks auto-clearing safe tiles' : `Auto-clears ${lvl + 1} tile(s) per tick`,
     baseCost: 600,
-    costMultiplier: 1.5,
+    costMultiplier: 2.2,
     effect: (lvl) => lvl + 1,
   },
   {
@@ -97,7 +97,7 @@ export const UPGRADES: Upgrade[] = [
       return `${bots} bot${bots > 1 ? 's' : ''} @ ${autoSpeedMs(speedLvl)}ms`;
     },
     baseCost: 400,
-    costMultiplier: 1.35,
+    costMultiplier: 1.5,
     effect: (lvl) => {
       const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
       return autoSpeedMs(speedLvl);

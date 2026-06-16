@@ -1,5 +1,5 @@
 import { state, setTiles, setBoardInitialized, resetState } from '../state/state';
-import { cacheDomRefs, smileyBtn, prestigeBtn, resetBtn } from '../ui/dom';
+import { cacheDomRefs, smileyBtn, prestigeBtn, /*resetBtn*/ } from '../ui/dom';
 import { UPGRADE_MAP } from '../upgrades/upgrades';
 import { renderBoard, setTileHandlers } from '../ui/renderer';
 import { onTileClick, onTileRightClick, setFlagModeGetter, setNewGameCallback } from './input';
@@ -9,7 +9,7 @@ import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMine
 import { stopGameTimer } from './timers';
 import { prestige, setNewGameCallbackForPrestige } from './prestige';
 import { initToolbar, getFlagMode, getAutoMinerPaused, autoFitZoom, squareBoardContainer } from '../ui/toolbar';
-import { toggleAdSpace } from '../ui/adSpace';
+//import { toggleAdSpace } from '../ui/adSpace';
 import { initDevPanel } from '../ui/devPanel';
 import { getStartingTime } from '../config';
 
@@ -59,13 +59,13 @@ export function init() {
   setAutoMinerPausedGetterForUpgrades(getAutoMinerPaused);
   setTileHandlers(onTileClick, onTileRightClick);
 
-  resetBtn.addEventListener('click', () => resetGame());
+  // resetBtn.addEventListener('click', () => resetGame());
   prestigeBtn.addEventListener('click', () => prestige());
 
-  const adToggleBtn = document.getElementById('ad-toggle-btn');
-  const adCloseBtn  = document.getElementById('ad-close-btn');
-  if (adToggleBtn) adToggleBtn.addEventListener('click', () => toggleAdSpace());
-  if (adCloseBtn)  adCloseBtn.addEventListener('click', () => toggleAdSpace(true));
+  //const adToggleBtn = document.getElementById('ad-toggle-btn');
+  //const adCloseBtn  = document.getElementById('ad-close-btn');
+  //if (adToggleBtn) adToggleBtn.addEventListener('click', () => toggleAdSpace());
+  //if (adCloseBtn)  adCloseBtn.addEventListener('click', () => toggleAdSpace(true));
 
   initToolbar();
   initDevPanel();  // adds 🛠️ button to toolbar
