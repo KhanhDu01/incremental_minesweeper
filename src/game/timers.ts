@@ -1,5 +1,5 @@
-import { state, tiles, boardInitialized, setTiles, setBoardInitialized, mpsAccum } from '../state/state';
-import { createBoard, floodReveal, getSafeTiles, getMineTiles } from '../board/board';
+import { state, tiles, boardInitialized, setTiles, setBoardInitialized, commitMpsTick, getMpsRate } from '../state/state';
+import { createBoard, floodReveal, getSafeTiles, getMineTiles, shuffleArray } from '../board/board';
 import { UPGRADE_MAP, getBotCount } from '../upgrades/upgrades';
 import { saveGame } from '../state/save';
 import { renderBoard, refreshAllTiles } from '../ui/renderer';
@@ -86,10 +86,12 @@ function stopAutoFlagTimers() {
   autoFlagTimers = [];
 }
 
-// ---- Auto-start board ----
+// ---- Bot first-click: safe center tile, flood-reveals like player ----
+
+let botLastClearPos: [number, number] | null = null;
 
 export function autoStartBoard() {
-  if (boardTransitioning) return;      // wait for the win/loss delay
+  if (boardTransitioning) return;
   if (state.phase === 'playing') return;
 
   boardTransitioning = true;
@@ -101,17 +103,26 @@ export function autoStartBoard() {
   updateMineCounter();
   updateTimerDisplay();
 
-  const r = Math.floor(Math.random() * state.rows);
-  const c = Math.floor(Math.random() * state.cols);
+  // Pick the center tile as the safe starting point
+  const r = Math.floor(state.rows / 2);
+  const c = Math.floor(state.cols / 2);
+
   setTiles(createBoard(state.rows, state.cols, state.mineCount, r, c));
   setBoardInitialized(true);
   state.phase = 'playing';
   startGameTimer();
+
+  // Flood-reveal from center (same as player first click)
+  const revealed = floodReveal(tiles, r, c, state.rows, state.cols);
+  if (revealed.length > 0) earnMoneyQuiet(revealed.length);
+  botLastClearPos = [r, c];
+
   renderBoard();
   boardTransitioning = false;
 }
 
 // ---- Auto-clear (supports multiple bots) ----
+// Subsequent bot clears happen near the last cleared position
 
 export function startAutoClearTimer() {
   stopAutoClearTimers();
@@ -130,7 +141,6 @@ export function startAutoClearTimer() {
       if (_getAutoMinerPaused()) return;
 
       if (state.phase === 'idle' || state.phase === 'won' || state.phase === 'lost') {
-        // Only bot 0 triggers new games
         if (bot === 0) autoStartBoard();
         return;
       }
@@ -139,11 +149,26 @@ export function startAutoClearTimer() {
       const safe = getSafeTiles(tiles, state.rows, state.cols);
       if (safe.length === 0) return;
 
+      // Sort safe tiles by proximity to last cleared position so bots
+      // expand outward from where they last worked.
+      let candidates = safe;
+      if (botLastClearPos) {
+        const [lr, lc] = botLastClearPos;
+        candidates = [...safe].sort((a, b) => {
+          const da = Math.abs(a[0] - lr) + Math.abs(a[1] - lc);
+          const db = Math.abs(b[0] - lr) + Math.abs(b[1] - lc);
+          return da - db;
+        });
+      }
+
       let cleared = 0;
-      for (let i = 0; i < Math.min(tilesPerTick, safe.length); i++) {
-        const [r, c] = safe[i];
+      for (let i = 0; i < Math.min(tilesPerTick, candidates.length); i++) {
+        const [r, c] = candidates[i];
         const revealed = floodReveal(tiles, r, c, state.rows, state.cols);
-        cleared += revealed.length;
+        if (revealed.length > 0) {
+          cleared += revealed.length;
+          botLastClearPos = [r, c];
+        }
       }
 
       if (cleared > 0) {
@@ -157,7 +182,7 @@ export function startAutoClearTimer() {
   }
 }
 
-// ---- Auto-flag (supports multiple bots) ----
+// ---- Auto-flag (supports multiple bots, random placement) ----
 
 export function startAutoFlagTimer() {
   stopAutoFlagTimers();
@@ -184,9 +209,12 @@ export function startAutoFlagTimer() {
       const mines = getMineTiles(tiles, state.rows, state.cols);
       if (mines.length === 0) return;
 
+      // Random flag placement — shuffle so bots don't always flag the same mines first
+      const shuffled = shuffleArray([...mines]);
+
       let flagged = 0;
-      for (let i = 0; i < Math.min(flagsPerTick, mines.length); i++) {
-        tiles[mines[i][0]][mines[i][1]].isFlagged = true;
+      for (let i = 0; i < Math.min(flagsPerTick, shuffled.length); i++) {
+        tiles[shuffled[i][0]][shuffled[i][1]].isFlagged = true;
         flagged++;
       }
 
@@ -200,16 +228,13 @@ export function startAutoFlagTimer() {
   }
 }
 
-// ---- MPS ticker ----
-// Snapshots the accumulator every second to compute rate.
+// ---- MPS ticker — 5-second rolling average ----
 
 export function startMpsTimer() {
   if (mpsTimer) clearInterval(mpsTimer);
-  let lastAccum = mpsAccum;
   mpsTimer = setInterval(() => {
-    const current = mpsAccum;
-    const rate = current - lastAccum;
-    lastAccum = current;
+    commitMpsTick();
+    const rate = getMpsRate();
     updateMpsDisplay(rate);
   }, 1000);
 }

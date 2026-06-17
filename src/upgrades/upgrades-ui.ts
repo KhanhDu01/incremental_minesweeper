@@ -1,18 +1,18 @@
 import type { UpgradeId } from '../state/types';
 import { state } from '../state/state';
-import { UPGRADES, UPGRADE_MAP, upgradeCost, /*effectiveMaxLevel ,*/ getBotCount } from './upgrades';
+import { UPGRADES, UPGRADE_MAP, upgradeCost, getBotCount } from './upgrades';
 import { formatMoney } from '../state/save';
 import { upgradesListEl } from '../ui/dom';
 import { updateHUD, showToast, updateTimerDisplay } from '../ui/hud';
 import { startAutoClearTimer, startAutoFlagTimer } from '../game/timers';
 import { getStartingTime, CONFIG } from '../config';
 import { setAutoMinerPaused, getAutoMinerPaused } from '../ui/toolbar';
+import { checkAchievements } from '../game/achievements';
 
 // ---- Category metadata ----
 const UPGRADE_CATEGORY: Record<UpgradeId, 'Income' | 'Automation' | 'Board'> = {
   money_per_tile:    'Income',
   board_clear_bonus: 'Income',
-  reveal_area:       'Income',
   longer_timer:      'Board',
   auto_clear:        'Automation',
   auto_clear_speed:  'Automation',
@@ -31,23 +31,6 @@ function isHidden(id: UpgradeId): boolean {
   return state.upgrades[gate.req] < gate.minLevel;
 }
 
-/* ---- Sounds ----
-function playMilestoneChime() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
-      const osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sine'; osc.frequency.value = freq;
-      const t = ctx.currentTime + i * 0.1;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.18, t + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      osc.start(t); osc.stop(t + 0.35);
-    });
-  } catch { / noop / }
-}
-*/
 function playUnlockChime() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -104,8 +87,7 @@ export function updateUpgradeElement(id: UpgradeId) {
   const hidden     = isHidden(id);
   const category   = UPGRADE_CATEGORY[id];
 
-  // Speed upgrades: check if this purchase crosses a bot boundary
-  const isSpeedUpgrade = id === 'auto_clear_speed' || id === 'auto_flag_speed';
+  const isSpeedUpgrade    = id === 'auto_clear_speed' || id === 'auto_flag_speed';
   const nextLevelIsNewBot = isSpeedUpgrade && level > 0 && (level % CONFIG.BOT_LEVEL_INTERVAL === 0);
 
   const el = upgradesListEl.querySelector(`[data-id="${id}"]`) as HTMLElement;
@@ -122,15 +104,12 @@ export function updateUpgradeElement(id: UpgradeId) {
   if (!canAfford) el.classList.add('cannot-afford');
 
   const categoryClass = `cat-${category.toLowerCase()}`;
-
-  // Bot milestone badge
   const botBadge = nextLevelIsNewBot
     ? `<span class="upgrade-bot-badge">🤖 +1 BOT</span>`
     : '';
 
   const costHtml = `<div class="upgrade-cost ${canAfford ? 'affordable' : ''}">${formatMoney(cost)}${botBadge}</div>`;
 
-  // Level display — show bot count for speed upgrades
   let levelText = '';
   if (level > 0) {
     if (isSpeedUpgrade) {
@@ -141,7 +120,6 @@ export function updateUpgradeElement(id: UpgradeId) {
     }
   }
 
-  // Inline pause/resume for auto_clear
   const isAutoClear  = id === 'auto_clear';
   const showPauseBtn = isAutoClear && level >= 1;
   const paused       = getAutoMinerPaused();
@@ -196,9 +174,8 @@ function buyUpgrade(id: UpgradeId) {
   const cost = upgradeCost(upgrade, level);
   if (state.money < cost) return;
 
-  const wasLevelZero   = level === 0;
-  const isSpeedUpgrade = id === 'auto_clear_speed' || id === 'auto_flag_speed';
-  // A new bot is unlocked when we *cross* a BOT_LEVEL_INTERVAL boundary
+  const wasLevelZero      = level === 0;
+  const isSpeedUpgrade    = id === 'auto_clear_speed' || id === 'auto_flag_speed';
   const crossesBotBoundary = isSpeedUpgrade && level > 0 && (level % CONFIG.BOT_LEVEL_INTERVAL === 0);
 
   state.money -= cost;
@@ -206,6 +183,7 @@ function buyUpgrade(id: UpgradeId) {
 
   updateUpgradesAffordability();
   updateHUD();
+  checkAchievements();
 
   const el = upgradesListEl.querySelector(`[data-id="${id}"]`) as HTMLElement;
 

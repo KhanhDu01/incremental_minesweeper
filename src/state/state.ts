@@ -19,6 +19,7 @@ export function resetState() {
   const fresh = resetGame();
   Object.assign(state, fresh);
   state.upgrades = { ...fresh.upgrades };
+  state.achievements = { ...fresh.achievements };
 }
 
 export function setTiles(next: TileState[][]) {
@@ -29,11 +30,31 @@ export function setBoardInitialized(val: boolean) {
   boardInitialized = val;
 }
 
-// Money-per-second accumulator (written by timers, read by MPS ticker)
-export let mpsAccum = 0;
+// ---- MPS ring buffer (5-second window) ----
+// Stores the last N per-second earnings samples.
+const MPS_WINDOW = 5;
+const mpsRing: number[] = new Array(MPS_WINDOW).fill(0);
+let mpsRingIdx = 0;
+let mpsCurrentTick = 0; // accumulator for current second
+
 export function addMpsAccum(amount: number) {
-  mpsAccum += amount;
+  mpsCurrentTick += amount;
 }
-export function resetMpsAccum() {
-  mpsAccum = 0;
+
+/** Called once per second by the MPS timer to commit the current tick. */
+export function commitMpsTick(): number {
+  mpsRing[mpsRingIdx % MPS_WINDOW] = mpsCurrentTick;
+  mpsRingIdx++;
+  const rate = mpsCurrentTick;
+  mpsCurrentTick = 0;
+  return rate;
 }
+
+/** Returns the average earnings per second over the last 5 seconds. */
+export function getMpsRate(): number {
+  const sum = mpsRing.reduce((a, b) => a + b, 0);
+  return sum / MPS_WINDOW;
+}
+
+// Legacy export so old call-sites still compile
+export let mpsAccum = 0;

@@ -1,11 +1,6 @@
 import type { TileState } from '../state/types';
 import { isSolvable } from './solver';
 
-// Scale attempt count inversely with board area so total work stays bounded.
-// 7×7 (49 tiles)  → ~1000 attempts
-// 10×10 (100)     → ~490
-// 13×13 (169)     → ~290
-// 16×16 (256)     → skipped by solver anyway (>250 tile limit)
 function maxAttempts(rows: number, cols: number): number {
   return Math.max(20, Math.floor(50_000 / (rows * cols)));
 }
@@ -112,31 +107,6 @@ export function floodReveal(
   return revealed;
 }
 
-export function revealArea(
-  tiles: TileState[][],
-  centerR: number,
-  centerC: number,
-  radius: number,
-  rows: number,
-  cols: number
-): [number, number][] {
-  const allRevealed: [number, number][] = [];
-  const halfSize = Math.floor(radius / 2);
-
-  for (let dr = -halfSize; dr <= halfSize; dr++) {
-    for (let dc = -halfSize; dc <= halfSize; dc++) {
-      const nr = centerR + dr;
-      const nc = centerC + dc;
-      if (nr < 0 || nr >= rows || nc < 0 || nc >= cols) continue;
-      const tile = tiles[nr][nc];
-      if (tile.isRevealed || tile.isFlagged || tile.isMine) continue;
-      const newReveal = floodReveal(tiles, nr, nc, rows, cols);
-      allRevealed.push(...newReveal);
-    }
-  }
-  return allRevealed;
-}
-
 export function getSafeTiles(tiles: TileState[][], rows: number, cols: number): [number, number][] {
   const safe: [number, number][] = [];
   for (let r = 0; r < rows; r++) {
@@ -167,10 +137,35 @@ export function countFlagged(tiles: TileState[][], rows: number, cols: number): 
   return count;
 }
 
+/**
+ * Board is won when:
+ * - All non-mine tiles are revealed, AND
+ * - All flagged tiles are actually mines (no wrong flags)
+ */
 export function isBoardWon(tiles: TileState[][], rows: number, cols: number, mineCount: number): boolean {
   let revealed = 0;
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++)
-      if (tiles[r][c].isRevealed) revealed++;
-  return revealed === rows * cols - mineCount;
+  let wrongFlags = 0;
+  let correctFlags = 0;
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const t = tiles[r][c];
+      if (t.isRevealed) revealed++;
+      if (t.isFlagged && !t.isMine) wrongFlags++;
+      if (t.isFlagged && t.isMine)  correctFlags++;
+    }
+  }
+
+  // All safe tiles revealed AND no wrong flags placed
+  const allSafeRevealed = revealed === rows * cols - mineCount;
+  return allSafeRevealed && wrongFlags === 0;
+}
+
+/** Shuffle array in place (Fisher-Yates) */
+export function shuffleArray<T>(arr: T[]): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
 }

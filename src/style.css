@@ -26,7 +26,7 @@
 
 html, body {
   height: 100%;
-  overflow: hidden; /* prevent full-page scroll; each section scrolls itself */
+  overflow: hidden;
 }
 
 body {
@@ -51,7 +51,7 @@ body {
 }
 
 /* ============================================
-   APP SHELL — fills full screen, no body scroll
+   APP SHELL
    ============================================ */
 #app {
   display: flex;
@@ -116,18 +116,14 @@ body {
   border-right: 2px solid var(--shadow-light);
   background: #a0a0a0;
 }
-.tool-btn.paused {
-  color: #800000;
-}
-.tool-btn.hidden {
-  display: none;
-}
+.tool-btn.paused { color: #800000; }
+.tool-btn.hidden { display: none; }
 
 #zoom-controls {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-left: auto; /* push zoom to the right */
+  margin-left: auto;
 }
 #zoom-label {
   font-size: 11px;
@@ -136,7 +132,7 @@ body {
   text-align: center;
 }
 
-/* ---- MAIN AREA (board + upgrades) ---- */
+/* ---- MAIN AREA ---- */
 #main {
   flex: 1;
   display: flex;
@@ -149,7 +145,7 @@ body {
 #board-panel {
   display: flex;
   flex-direction: column;
-  align-items: center;        /* center everything horizontally */
+  align-items: center;
   justify-content: flex-start;
   gap: 5px;
   padding: 10px;
@@ -159,10 +155,10 @@ body {
   background: var(--bg);
 }
 
-/* ---- BOARD HEADER / FOOTER — match container width ---- */
+/* ---- BOARD HEADER / FOOTER ---- */
 #board-header {
   width: 100%;
-  max-width: var(--board-container-size, 340px); /* synced via JS */
+  max-width: var(--board-container-size, 340px);
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -179,7 +175,6 @@ body {
   max-width: var(--board-container-size, 340px);
   padding: 2px 0 0;
 }
-
 
 .lcd-display {
   background: var(--lcd-bg);
@@ -259,7 +254,6 @@ body {
 .tile.flagged { background: var(--tile-unrevealed); }
 .tile.mine-hit { background: var(--danger); }
 
-/* Flag-mode cursor hint */
 body.flag-mode .tile:not(.revealed) {
   cursor: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20'><text y='16' font-size='16'>🚩</text></svg>") 4 4, pointer;
 }
@@ -272,7 +266,7 @@ body.flag-mode .tile:not(.revealed) {
   100% { background: var(--bg); }
 }
 
-/* Number colours — classic minesweeper */
+/* Number colours */
 .tile[data-num="1"] { color: #0000ff; }
 .tile[data-num="2"] { color: #008000; }
 .tile[data-num="3"] { color: #ff0000; }
@@ -283,8 +277,6 @@ body.flag-mode .tile:not(.revealed) {
 .tile[data-num="8"] { color: #808080; }
 
 /* ---- PROGRESS BAR ---- */
-#board-footer { padding: 2px 0 0; }
-
 #progress-bar-container {
   position: relative;
   height: 16px;
@@ -462,12 +454,10 @@ body.flag-mode .tile:not(.revealed) {
   border-right: 2px solid var(--shadow-darker);
 }
 
-/* ---- Upgrade: hidden (gated) ---- */
-.upgrade-hidden {
-  display: none;
-}
+/* ---- Upgrade hidden (gated) ---- */
+.upgrade-hidden { display: none; }
 
-/* ---- Upgrade: name row with category tag ---- */
+/* ---- Upgrade name row with category tag ---- */
 .upgrade-name-row {
   display: flex;
   align-items: center;
@@ -488,15 +478,7 @@ body.flag-mode .tile:not(.revealed) {
 .cat-automation { background: #000030; color: #4488ff; border: 1px solid #002288; }
 .cat-board      { background: #300010; color: #ff6688; border: 1px solid #880033; }
 
-/* ---- Upgrade: before/after income ---- */
-.upgrade-before-after {
-  font-size: 10px;
-  color: #008800;
-  font-weight: bold;
-  margin-top: 1px;
-}
-
-/* ---- Upgrade: right column (payback + cost) ---- */
+/* ---- Upgrade right column ---- */
 .upgrade-right {
   display: flex;
   flex-direction: column;
@@ -505,36 +487,17 @@ body.flag-mode .tile:not(.revealed) {
   flex-shrink: 0;
 }
 
-.upgrade-payback {
-  font-size: 9px;
-  font-weight: bold;
-  color: #606060;
-  letter-spacing: 0.3px;
-  white-space: nowrap;
-}
-.upgrade-payback.good-deal {
-  color: #006600;
-  background: #002200;
-  padding: 1px 4px;
-  border-radius: 3px;
-  border: 1px solid #004400;
-}
-
 /* ---- Milestone unlock animation ---- */
 @keyframes milestone-glow {
   0%   { box-shadow: inset 0 0 0 2px #ffd700; background: #3a3000; }
   40%  { box-shadow: inset 0 0 0 3px #ffe066; background: #4a3800; }
   100% { box-shadow: none; background: var(--tile-unrevealed); }
 }
-
 .upgrade-item.milestone-unlock {
   animation: milestone-glow 0.8s ease-out forwards;
 }
 
-/* ============================================
-   AD SPACE
-   ============================================ */
-
+/* ---- AD SPACE ---- */
 #ad-space-container {
   flex-shrink: 0;
   background: var(--bg);
@@ -543,7 +506,6 @@ body.flag-mode .tile:not(.revealed) {
   border-bottom: 3px solid var(--shadow-darker);
   border-right: 3px solid var(--shadow-darker);
 }
-
 #ad-space-container.hidden { display: none; }
 
 #ad-space-header {
@@ -557,83 +519,12 @@ body.flag-mode .tile:not(.revealed) {
   font-weight: bold;
   letter-spacing: 1px;
 }
+#ad-space-title  { letter-spacing: 3px; opacity: 0.7; }
+#ad-income-label { color: #44ff88; font-size: 11px; font-weight: bold; }
+.ad-close        { font-size: 11px; padding: 1px 6px; line-height: 1; }
+#ad-slot         { min-height: 80px; display: flex; align-items: center; justify-content: center; }
 
-#ad-space-title {
-  letter-spacing: 3px;
-  opacity: 0.7;
-}
-
-#ad-income-label {
-  color: #44ff88;
-  font-size: 11px;
-  font-weight: bold;
-}
-
-.ad-close {
-  font-size: 11px;
-  padding: 1px 6px;
-  line-height: 1;
-}
-
-#ad-slot {
-  min-height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-/* Placeholder shown until real ad markup is inserted */
-.ad-placeholder {
-  width: 100%;
-  min-height: 80px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: #111122;
-  padding: 10px 16px;
-}
-
-.ad-placeholder .ad-label {
-  font-size: 9px;
-  letter-spacing: 3px;
-  color: #444466;
-  font-weight: bold;
-}
-
-.ad-placeholder .ad-hint {
-  font-size: 11px;
-  color: #6666aa;
-  text-align: center;
-  line-height: 1.4;
-}
-
-.ad-placeholder .ad-hint code,
-.ad-placeholder .ad-hint strong {
-  color: #88aaff;
-}
-
-/* ============================================
-   PRESTIGE-LOCKED UPGRADE COST BADGE
-   ============================================ */
-
-.upgrade-prestige-locked {
-  font-size: 10px !important;
-  color: #ffaa00 !important;
-  background: #2a1a00;
-  padding: 2px 5px;
-  border-radius: 3px;
-  border: 1px solid #664400;
-  white-space: nowrap;
-}
-
-/* ============================================
-   INLINE AUTO-MINER TOGGLE (inside upgrade item)
-   Add these rules to style.css
-   ============================================ */
-
-/* The ▶ ON / ⏸ OFF button inside the Auto-Miner upgrade */
+/* ---- INLINE AUTO-MINER TOGGLE ---- */
 .auto-miner-toggle-btn {
   font-size: 10px;
   padding: 2px 7px;
@@ -647,7 +538,6 @@ body.flag-mode .tile:not(.revealed) {
   border-bottom: 2px solid #001a00;
   border-right: 2px solid #001a00;
 }
-
 .auto-miner-toggle-btn.paused {
   background: #1a0000;
   color: #ff6644;
@@ -656,7 +546,6 @@ body.flag-mode .tile:not(.revealed) {
   border-bottom-color: #330000;
   border-right-color: #330000;
 }
-
 .auto-miner-toggle-btn:active {
   border-top: 2px solid #001a00;
   border-left: 2px solid #001a00;
@@ -683,26 +572,22 @@ body.flag-mode .tile:not(.revealed) {
 .tab-btn {
   flex: 1;
   font-family: var(--font-main);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: bold;
   padding: 6px 0;
   background: var(--bg);
   border: none;
   border-bottom: 3px solid transparent;
   cursor: pointer;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   color: #404040;
 }
-
 .tab-btn.active {
   border-bottom: 3px solid var(--accent);
   color: var(--accent);
   background: #d4d4d4;
 }
-
-.tab-btn:active {
-  background: #b0b0b0;
-}
+.tab-btn:active { background: #b0b0b0; }
 
 /* ---- TAB PANELS ---- */
 .tab-panel {
@@ -712,14 +597,9 @@ body.flag-mode .tile:not(.revealed) {
   flex-direction: column;
   overflow: hidden;
 }
+.tab-panel.hidden { display: none; }
 
-.tab-panel.hidden {
-  display: none;
-}
-
-/* ============================================
-   BOT BADGE (speed upgrade new-bot milestone)
-   ============================================ */
+/* ---- BOT BADGE ---- */
 .upgrade-bot-badge {
   display: inline-block;
   font-size: 9px;
@@ -732,4 +612,102 @@ body.flag-mode .tile:not(.revealed) {
   border-radius: 3px;
   margin-left: 5px;
   vertical-align: middle;
+}
+
+/* ============================================
+   ACHIEVEMENTS PANEL
+   ============================================ */
+
+#achievements-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#achievements-header {
+  flex-shrink: 0;
+  background: var(--accent);
+  color: #fff;
+  font-weight: bold;
+  font-size: 13px;
+  letter-spacing: 2px;
+  padding: 4px 8px;
+  border-bottom: 2px solid var(--shadow-darker);
+}
+
+#achievements-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.achievements-count {
+  font-size: 11px;
+  font-weight: bold;
+  color: var(--accent);
+  text-align: center;
+  padding: 4px 0 6px;
+  letter-spacing: 1px;
+}
+
+.achievement-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: var(--bg);
+  border-top: 2px solid var(--shadow-light);
+  border-left: 2px solid var(--shadow-light);
+  border-bottom: 2px solid var(--shadow-darker);
+  border-right: 2px solid var(--shadow-darker);
+}
+
+.achievement-item.locked {
+  opacity: 0.45;
+}
+
+.achievement-item.unlocked {
+  border-top-color: #ffd700;
+  border-left-color: #ffd700;
+}
+
+.achievement-icon {
+  font-size: 22px;
+  flex-shrink: 0;
+  width: 26px;
+  text-align: center;
+}
+
+.achievement-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.achievement-name {
+  font-weight: bold;
+  font-size: clamp(11px, 3vw, 13px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.achievement-desc {
+  font-size: clamp(9px, 2.5vw, 11px);
+  color: #404040;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.achievement-badge {
+  font-size: 14px;
+  font-weight: bold;
+  color: #ffd700;
+  flex-shrink: 0;
 }

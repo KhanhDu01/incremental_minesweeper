@@ -1,6 +1,7 @@
 import type { TileState } from '../state/types';
 import { state, tiles, setTiles, setBoardInitialized } from '../state/state';
 import { boardEl } from './dom';
+import { EMOJI_FLAG_TILE } from '../assets/index';
 
 type ClickHandler = (r: number, c: number) => void;
 let _onTileClick: ClickHandler = () => {};
@@ -12,6 +13,7 @@ export function setTileHandlers(click: ClickHandler, rightClick: ClickHandler) {
 }
 
 const CANVAS_THRESHOLD_PX = 6;
+const CANVAS_THRESHOLD_TILES = 5_000;
 
 let usingCanvas = false;
 let canvasEl: HTMLCanvasElement | null = null;
@@ -29,7 +31,7 @@ export function renderBoard() {
   }
 
   const tileSize = getTileSize();
-  usingCanvas = tileSize < CANVAS_THRESHOLD_PX;
+  usingCanvas = (state.rows * state.cols) > CANVAS_THRESHOLD_TILES || tileSize < CANVAS_THRESHOLD_PX;
 
   boardEl.innerHTML = '';
   canvasEl = null;
@@ -186,7 +188,7 @@ export function updateTileElement(el: HTMLElement, tile: TileState) {
       el.dataset.num = String(tile.adjacentMines);
     }
   } else if (tile.isFlagged) {
-    el.textContent = '🚩';
+    el.textContent = EMOJI_FLAG_TILE;
   }
 }
 
@@ -209,7 +211,6 @@ export function refreshTile(r: number, c: number) {
   if (el) updateTileElement(el, tiles[r][c]);
 }
 
-// Long-press: 150ms feels responsive on mobile
 function setupLongPress(el: HTMLElement, callback: () => void) {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let moved = false;

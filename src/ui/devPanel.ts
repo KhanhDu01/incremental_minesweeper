@@ -1,6 +1,5 @@
 // ============================================================
 //  DEV PANEL
-//  Hidden dev tools: set money, prestige, boards, upgrade levels.
 // ============================================================
 
 import { state } from '../state/state';
@@ -9,6 +8,8 @@ import { updateHUD, updatePrestigeBar } from './hud';
 import { updateUpgradesAffordability, renderUpgrades } from '../upgrades/upgrades-ui';
 import { getBoardDims, getStartingTime, getPrestigeMultiplier } from '../config';
 import { startAutoClearTimer, startAutoFlagTimer } from '../game/timers';
+import { renderAchievements } from './achievements-ui';
+import { EMOJI_DEV } from '../assets/index';
 
 let panelEl: HTMLElement | null = null;
 let visible = false;
@@ -19,7 +20,7 @@ export function initDevPanel() {
 
   const btn = document.createElement('button');
   btn.className = 'tool-btn';
-  btn.textContent = '🛠️';
+  btn.textContent = EMOJI_DEV;
   btn.title = 'Developer panel';
   btn.addEventListener('click', () => toggleDevPanel());
   toolbar.appendChild(btn);
@@ -65,10 +66,16 @@ export function initDevPanel() {
       <button id="dev-set-prestige" style="font-family:monospace;cursor:pointer;padding:2px 8px;">Set</button>
     </div>
 
-    <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
-      <label style="white-space:nowrap;">🏆 Boards:</label>
+    <div style="margin-bottom:8px;display:flex;gap:8px;align-items:center;">
+      <label style="white-space:nowrap;">🏆 Total Boards:</label>
       <input id="dev-boards" type="number" value="0" min="0" style="width:70px;font-family:monospace;">
       <button id="dev-set-boards" style="font-family:monospace;cursor:pointer;padding:2px 8px;">Set</button>
+    </div>
+
+    <div style="margin-bottom:10px;display:flex;gap:8px;align-items:center;">
+      <label style="white-space:nowrap;">📋 Run Boards:</label>
+      <input id="dev-run-boards" type="number" value="0" min="0" style="width:70px;font-family:monospace;">
+      <button id="dev-set-run-boards" style="font-family:monospace;cursor:pointer;padding:2px 8px;">Set</button>
     </div>
 
     <div style="margin-bottom:6px;"><b>Upgrade levels:</b></div>
@@ -77,6 +84,7 @@ export function initDevPanel() {
     <div style="display:flex;gap:6px;flex-wrap:wrap;">
       <button id="dev-max-all" style="font-family:monospace;cursor:pointer;padding:3px 8px;">Max all (lvl 10)</button>
       <button id="dev-reset-upgrades" style="font-family:monospace;cursor:pointer;padding:3px 8px;">Reset upgrades</button>
+      <button id="dev-unlock-all-ach" style="font-family:monospace;cursor:pointer;padding:3px 8px;">Unlock all ach.</button>
     </div>
   `;
 
@@ -91,9 +99,7 @@ function buildUpgradeInputs() {
   for (const u of UPGRADES) {
     const label = document.createElement('span');
     label.textContent = `${u.icon} ${u.name}`;
-    label.style.overflow = 'hidden';
-    label.style.textOverflow = 'ellipsis';
-    label.style.whiteSpace = 'nowrap';
+    label.style.cssText = 'overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
     label.title = u.name;
 
     const input = document.createElement('input');
@@ -124,9 +130,10 @@ function buildUpgradeInputs() {
 
 function refreshInputValues() {
   if (!panelEl) return;
-  (panelEl.querySelector('#dev-money')    as HTMLInputElement).value = String(Math.floor(state.money));
-  (panelEl.querySelector('#dev-prestige') as HTMLInputElement).value = String(state.prestigeCount);
-  (panelEl.querySelector('#dev-boards')   as HTMLInputElement).value = String(state.boardsCleared);
+  (panelEl.querySelector('#dev-money')       as HTMLInputElement).value = String(Math.floor(state.money));
+  (panelEl.querySelector('#dev-prestige')    as HTMLInputElement).value = String(state.prestigeCount);
+  (panelEl.querySelector('#dev-boards')      as HTMLInputElement).value = String(state.totalBoardsCleared);
+  (panelEl.querySelector('#dev-run-boards')  as HTMLInputElement).value = String(state.boardsCleared);
   buildUpgradeInputs();
 }
 
@@ -147,20 +154,26 @@ function wireButtons() {
     state.prestigeCount      = val;
     state.prestigeMultiplier = getPrestigeMultiplier(val);
     const dims = getBoardDims(val);
-    state.cols     = dims.cols;
-    state.rows     = dims.rows;
+    state.cols      = dims.cols;
+    state.rows      = dims.rows;
     state.mineCount = dims.mineCount;
     state.timeLeft  = getStartingTime(val);
     updateHUD();
     updatePrestigeBar();
-    renderUpgrades(); // desc strings depend on prestige (timer upgrade)
+    renderUpgrades();
   });
 
   panelEl.querySelector('#dev-set-boards')?.addEventListener('click', () => {
     const val = Math.max(0, parseInt((panelEl!.querySelector('#dev-boards') as HTMLInputElement).value) || 0);
-    state.boardsCleared = val;
+    state.totalBoardsCleared = val;
     updateHUD();
     updatePrestigeBar();
+  });
+
+  panelEl.querySelector('#dev-set-run-boards')?.addEventListener('click', () => {
+    const val = Math.max(0, parseInt((panelEl!.querySelector('#dev-run-boards') as HTMLInputElement).value) || 0);
+    state.boardsCleared = val;
+    updateHUD();
   });
 
   panelEl.querySelector('#dev-max-all')?.addEventListener('click', () => {
@@ -181,6 +194,13 @@ function wireButtons() {
     updateHUD();
     renderUpgrades();
     buildUpgradeInputs();
+  });
+
+  panelEl.querySelector('#dev-unlock-all-ach')?.addEventListener('click', () => {
+    for (const key of Object.keys(state.achievements)) {
+      (state.achievements as any)[key] = true;
+    }
+    renderAchievements();
   });
 }
 
