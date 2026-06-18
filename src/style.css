@@ -2,6 +2,18 @@
    MINESWEEPER INC. - Classic Win95 Aesthetic
    ============================================ */
 
+@font-face{
+  font-family: "RetroFont";
+  src: url("/font/pixelated-elegance-font/PixelatedEleganceRegular-ovawB.ttf") format("truetype");
+  font-display: swap;
+}
+
+@font-face{
+  font-family: "LCDFont";
+  src: url("/font/segment7-font/Segment7-4Gml.otf") format("truetype");
+  font-display: swap;
+}
+
 :root {
   --bg: #c0c0c0;
   --shadow-light: #ffffff;
@@ -13,7 +25,6 @@
   --danger: #ff0000;
   --lcd-bg: #000000;
   --lcd-text: #ff0000;
-  --font-main: 'Courier New', Courier, monospace;
 }
 
 * {
@@ -27,6 +38,7 @@
 html, body {
   height: 100%;
   overflow: hidden;
+  font-family: "RetroFont", sans-serif;
 }
 
 body {
@@ -179,7 +191,7 @@ body {
 .lcd-display {
   background: var(--lcd-bg);
   color: var(--lcd-text);
-  font-family: 'Courier New', monospace;
+  font-family: 'LCDFont', monospace;
   font-size: clamp(16px, 4.5vw, 26px);
   font-weight: bold;
   padding: 2px 5px;
