@@ -18,24 +18,23 @@
     <!-- Header / Stats Bar -->
     <div id="header">
       <div id="stat-money">
-        <span class="stat-label">💰</span>
+        <img src = "/ui/coin.png" alt = "money" style="width:17px; height:auto;">
         <span id="money-display">$0</span>
       </div>
       <div id="stat-mps">
-        <span class="stat-label">⚡</span>
         <span id="mps-display">$0/s</span>
       </div>
       <div id="stat-boards">
-        <span class="stat-label">🏆</span>
+        <img src = "/ui/trophy.png" alt = "trophy" style="width:17px; height:auto;">
         <span id="boards-display">0 boards</span>
       </div>
     </div>
 
     <!-- Mobile toolbar: flag mode + zoom + ad toggle -->
     <div id="toolbar">
-      <button id="flag-mode-btn" class="tool-btn" title="Flag mode">🚩 Flag</button>
-      <button id="reset-btn" class="tool-btn" title="Reset game">🔄 Reset</button>
-      <button id="ad-toggle-btn" class="tool-btn" title="Toggle ad panel">📺 Ads: OFF</button>
+      <button id="flag-mode-btn" class="tool-btn" title="Flag mode">Flag</button>
+      <!-- <button id="reset-btn" class="tool-btn" title="Reset game">🔄 Reset</button>
+      <button id="ad-toggle-btn" class="tool-btn" title="Toggle ad panel">📺 Ads: OFF</button> -->
       <div id="zoom-controls">
         <button id="zoom-out-btn" class="tool-btn" title="Zoom out">🔍−</button>
         <span id="zoom-label">100%</span>
@@ -44,10 +43,10 @@
     </div>
 
     <!-- Main Game Area -->
-    <!-- Replace the entire #main div with this -->
     <div id="tab-bar">
-      <button id="tab-board-btn" class="tab-btn active">🎮 Board</button>
-      <button id="tab-upgrades-btn" class="tab-btn">⬆️ Upgrades</button>
+      <button id="tab-board-btn" class="tab-btn active">Board</button>
+      <button id="tab-upgrades-btn" class="tab-btn">Upgrades</button>
+      <button id="tab-achievements-btn" class="tab-btn">Achievements</button>
     </div>
 
     <!-- Ad space -->
@@ -72,7 +71,7 @@
         <div id="board-panel">
           <div id="board-header">
             <div id="mine-counter" class="lcd-display">000</div>
-            <div id="smiley-btn">🙂</div>
+            <img src = "public/ui/face/smiley.png" id="smiley-btn" style="width:30px; height:auto;">
             <div id="timer-display" class="lcd-display">000</div>
           </div>
           <div id="board-container">
@@ -90,9 +89,10 @@
       <!-- Prestige bar -->
       <div id="prestige-bar" class="hidden">
         <span id="prestige-info"></span>
-        <button id="prestige-btn">⭐ PRESTIGE</button>
+        <button id="prestige-btn">PRESTIGE</button>
       </div>
 
+      <!-- Upgrades tab -->
       <div id="tab-upgrades" class="tab-panel hidden">
         <div id="upgrades-panel">
           <div id="upgrades-header">UPGRADES</div>
@@ -101,6 +101,15 @@
       </div>
     </div>
     
+    <!-- Achievements tab -->
+    <div id="tab-achievements" class="tab-panel hidden">
+      <div id="achievements-panel">
+        <div id="achievements-header">ACHIEVEMENTS</div>
+        <div id="achievements-list"></div>
+      </div>
+    </div>
+
+
     <!-- Toast notifications -->
     <div id="toast-container"></div>
   </div>

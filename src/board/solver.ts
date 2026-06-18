@@ -1,24 +1,11 @@
 // ============================================================
 //  MINESWEEPER CONSTRAINT-PROPAGATION SOLVER
-//  Returns true if the board can be fully solved without guessing,
-//  starting from the given revealed seed tile.
-//
-//  Performance guards:
-//  - MAX_PROPAGATION_PASSES caps how many full-grid scans we do per board.
-//  - For very large boards (>300 tiles) we skip the check entirely and
-//    return true — the fallback board is accepted as-is.
 // ============================================================
 
 import type { TileState } from '../state/types';
 import { neighbors } from './board';
 
-// One "pass" = one full scan of the grid. 30 passes is more than enough
-// for typical minesweeper constraint propagation to reach fixpoint.
 const MAX_PROPAGATION_PASSES = 30;
-
-// Beyond this tile count the solver becomes too slow to run 100s of times.
-// We just accept the board; solvability isn't guaranteed but the board is
-// still playable (identical to the original behaviour for unsolvable boards).
 const LARGE_BOARD_TILE_LIMIT = 250;
 
 type SolverTile = {
@@ -94,7 +81,6 @@ export function isSolvable(
   startR: number,
   startC: number
 ): boolean {
-  // Skip expensive check for large boards — accept as-is.
   if (rows * cols > LARGE_BOARD_TILE_LIMIT) return true;
 
   const grid = cloneForSolver(tiles, rows, cols);

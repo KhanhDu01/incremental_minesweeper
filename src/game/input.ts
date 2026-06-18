@@ -1,21 +1,22 @@
 import { state, tiles, boardInitialized, setTiles, setBoardInitialized } from '../state/state';
-import { createBoard, floodReveal, revealArea, isBoardWon } from '../board/board';
+import { createBoard, floodReveal, isBoardWon, toggleFlag } from '../board/board';
 import { UPGRADE_MAP } from '../upgrades/upgrades';
 import { formatMoney } from '../state/save';
-import { renderBoard, refreshTile, getTileEl } from '../ui/renderer';
+import { renderBoard, refreshTile, getTileEl, drawCanvasFull, markTileDirty } from '../ui/renderer';
 import { updateMineCounter, updateHUD, updatePrestigeBar, showToast, setSmiley } from '../ui/hud';
 import { calcTileEarnings, earnMoney } from './money';
-import { startGameTimer, stopGameTimer } from './timers';
+import { startGameTimer, stopGameTimer, setBoardTransitioning } from './timers';
+import { checkAchievements, checkPerfectBoard } from './achievements';
+import { getStartingTime, CONFIG } from '../config';
+import { EMOJI_BOOM, EMOJI_BOARD_WIN, EMOJI_DEAD, EMOJI_WIN, EMOJI_MINE } from '../assets/index';
 
 // ============================================================
 //  TILE INTERACTION
 // ============================================================
 
-// Injected from toolbar.ts to avoid circular deps
 let _getFlagMode: () => boolean = () => false;
 export function setFlagModeGetter(fn: () => boolean) { _getFlagMode = fn; }
 
-// Injected from game.ts (newGame lives there to avoid circular deps)
 let _newGame: () => void = () => {};
 export function setNewGameCallback(fn: () => void) { _newGame = fn; }
 
@@ -24,10 +25,9 @@ export function onTileClick(r: number, c: number) {
   const tile = tiles[r][c];
   if (tile.isRevealed) return;
 
-  // Flag mode: tap toggles flag
   if (_getFlagMode()) {
     if (!boardInitialized) return;
-    tile.isFlagged = !tile.isFlagged;
+    toggleFlag(tiles, r, c, state.cols);
     refreshTile(r, c);
     updateMineCounter();
     return;
@@ -35,7 +35,6 @@ export function onTileClick(r: number, c: number) {
 
   if (tile.isFlagged) return;
 
-  // First click: generate board (safe zone) and start timer
   if (!boardInitialized) {
     setTiles(createBoard(state.rows, state.cols, state.mineCount, r, c));
     setBoardInitialized(true);
@@ -49,10 +48,7 @@ export function onTileClick(r: number, c: number) {
     return;
   }
 
-  const revealRadius = UPGRADE_MAP['reveal_area'].effect(state.upgrades.reveal_area);
-  const revealed = revealRadius > 1
-    ? revealArea(tiles, r, c, revealRadius, state.rows, state.cols)
-    : floodReveal(tiles, r, c, state.rows, state.cols);
+  const revealed = floodReveal(tiles, r, c, state.rows, state.cols);
 
   earnMoney(calcTileEarnings(revealed.length));
   revealed.forEach(([tr, tc]) => refreshTile(tr, tc));
@@ -66,7 +62,7 @@ export function onTileRightClick(r: number, c: number) {
   const tile = tiles[r][c];
   if (tile.isRevealed) return;
 
-  tile.isFlagged = !tile.isFlagged;
+  toggleFlag(tiles, r, c, state.cols);
   refreshTile(r, c);
   updateMineCounter();
 }
@@ -78,7 +74,7 @@ export function onTileRightClick(r: number, c: number) {
 function hitMine(r: number, c: number) {
   state.phase = 'lost';
   stopGameTimer();
-  setSmiley('😵');
+  setSmiley(EMOJI_DEAD);
 
   for (let tr = 0; tr < state.rows; tr++) {
     for (let tc = 0; tc < state.cols; tc++) {
@@ -87,19 +83,28 @@ function hitMine(r: number, c: number) {
         const el = getTileEl(tr, tc);
         if (el) {
           el.classList.add('revealed');
-          el.textContent = '💣';
+          el.textContent = EMOJI_MINE;
           if (tr === r && tc === c) el.classList.add('mine-hit');
+        } else {
+          markTileDirty(tr, tc);
         }
       }
     }
   }
+  // Flush all dirty mine tiles at once
+  drawCanvasFull();
 
-  showToast('💥 BOOM! Try again!');
-  setTimeout(() => _newGame(), 2000);
+  showToast(`${EMOJI_BOOM} BOOM! Try again!`);
+  setBoardTransitioning(true);
+  setTimeout(() => {
+    setBoardTransitioning(false);
+    _newGame();
+  }, 2000);
 }
 
 // ============================================================
 //  WIN CHECK
+//  Win condition: all safe tiles revealed AND all flags are on mines
 // ============================================================
 
 export function checkWin() {
@@ -107,19 +112,35 @@ export function checkWin() {
 
   state.phase = 'won';
   stopGameTimer();
-  setSmiley('😎');
+  setSmiley(EMOJI_WIN);
 
   state.boardsCleared++;
+  state.totalBoardsCleared++;
   state.boardNumber++;
 
+  // Board bonus — scaled by time remaining
   const bonusMultiplier = UPGRADE_MAP['board_clear_bonus'].effect(state.upgrades.board_clear_bonus);
   const base = state.mineCount * 20 * state.prestigeMultiplier;
-  const bonus = Math.floor(base * (bonusMultiplier + 1));
+
+  // Time bonus: ratio of time left vs total starting time (capped at timeBonusMax)
+  const totalTime   = getStartingTime(state.prestigeCount) + UPGRADE_MAP['longer_timer'].effect(state.upgrades.longer_timer);
+  const timeRatio   = totalTime > 0 ? Math.min(CONFIG.timeBonusMax, state.timeLeft / totalTime * CONFIG.timeBonusMax) : 1;
+  const timeFactor  = 1 + timeRatio; // 1x to (1 + timeBonusMax)x multiplier
+  const bonus = Math.floor(base * (bonusMultiplier + 1) * timeFactor);
 
   earnMoney(bonus);
-  showToast(`🏆 Board cleared! +${formatMoney(bonus)} bonus!`);
+  showToast(`${EMOJI_BOARD_WIN} Board cleared! +${formatMoney(bonus)} bonus!`);
+
+  // Achievement checks
+  checkPerfectBoard(state.timeLeft, totalTime);
+  checkAchievements();
 
   updateHUD();
   updatePrestigeBar();
-  setTimeout(() => _newGame(), 1500);
+
+  setBoardTransitioning(true);
+  setTimeout(() => {
+    setBoardTransitioning(false);
+    _newGame();
+  }, 1500);
 }

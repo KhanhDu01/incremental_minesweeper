@@ -20,11 +20,10 @@ export let flagModeBtn: HTMLElement;
 export let zoomInBtn: HTMLElement;
 export let zoomOutBtn: HTMLElement;
 export let zoomLabel: HTMLElement;
-export let resetBtn: HTMLElement;
-export let adToggleBtn: HTMLElement;
 export let adSpaceContainer: HTMLElement;
 export let adIncomeLabel: HTMLElement;
 export let adCloseBtn: HTMLElement;
+export let achievementsListEl: HTMLElement;
 
 export function cacheDomRefs() {
   boardEl            = document.getElementById('board')!;
@@ -38,16 +37,15 @@ export function cacheDomRefs() {
   progressLabel      = document.getElementById('progress-label')!;
   upgradesListEl     = document.getElementById('upgrades-list')!;
   prestigeBar        = document.getElementById('prestige-bar')         ?? document.createElement('div');
-  prestigeBtn        = document.getElementById('prestige-btn')        ?? document.createElement('button');
-  prestigeInfo       = document.getElementById('prestige-info')       ?? document.createElement('span');
+  prestigeBtn        = document.getElementById('prestige-btn')         ?? document.createElement('button');
+  prestigeInfo       = document.getElementById('prestige-info')        ?? document.createElement('span');
   toastContainer     = document.getElementById('toast-container')!;
   flagModeBtn        = document.getElementById('flag-mode-btn')!;
   zoomInBtn          = document.getElementById('zoom-in-btn')!;
   zoomOutBtn         = document.getElementById('zoom-out-btn')!;
   zoomLabel          = document.getElementById('zoom-label')!;
-  resetBtn           = document.getElementById('reset-btn')!;
-  adToggleBtn        = document.getElementById('ad-toggle-btn')!;
-  adSpaceContainer   = document.getElementById('ad-space-container')    ?? document.createElement('div');
-  adIncomeLabel      = document.getElementById('ad-income-label')       ?? document.createElement('span');
+  adSpaceContainer   = document.getElementById('ad-space-container')   ?? document.createElement('div');
+  adIncomeLabel      = document.getElementById('ad-income-label')      ?? document.createElement('span');
   adCloseBtn         = document.getElementById('ad-close-btn')         ?? document.createElement('button');
+  achievementsListEl = document.getElementById('achievements-list')    ?? document.createElement('div');
 }

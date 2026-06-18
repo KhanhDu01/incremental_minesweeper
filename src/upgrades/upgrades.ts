@@ -1,22 +1,23 @@
 import type { Upgrade, UpgradeId } from '../state/types';
-import { getEffectiveMaxLevel } from '../config';
+import { CONFIG, getTimerUpgradeSecondsPerLevel } from '../config';
 import { state } from '../state/state';
+import {
+  EMOJI_PICKAXE, EMOJI_DIAMOND, EMOJI_TIMER,
+  EMOJI_BOT, EMOJI_DETECTOR, EMOJI_RADAR, EMOJI_LIGHTNING,
+} from '../assets/index';
 
 // ============================================================
 //  UPGRADES
-//
-//  Cost philosophy:
-//  - costMultiplier ≤ 1.5 for most upgrades (vs old 1.75–3.2)
-//  - Speed upgrades use additive cost steps instead of exponential
-//    so they stay purchaseable without breaking the bank
-//  - Board/automation upgrades slightly pricier than income ones
+//  Big Shovel (reveal_area) removed.
+//  No upgrade max levels — players can keep buying forever.
+//  Speed upgrades use the bot system (every BOT_LEVEL_INTERVAL = new bot).
 // ============================================================
 
 export const UPGRADES: Upgrade[] = [
   {
     id: 'money_per_tile',
     name: 'Better Pickaxe',
-    icon: '⛏️',
+    icon: EMOJI_PICKAXE,
     desc: (lvl) => `$${(lvl + 1)} per tile cleared`,
     baseCost: 20,
     costMultiplier: 1.5,
@@ -25,8 +26,8 @@ export const UPGRADES: Upgrade[] = [
   {
     id: 'board_clear_bonus',
     name: 'Board Bonus',
-    icon: '💎',
-    desc: (lvl) => `${(lvl + 1) * 25}% board clear bonus`,
+    icon: EMOJI_DIAMOND,
+    desc: (lvl) => `${(lvl + 1) * 25}% board clear bonus (+time bonus)`,
     baseCost: 100,
     costMultiplier: 1.6,
     effect: (lvl) => (lvl + 1) * 0.25,
@@ -34,25 +35,19 @@ export const UPGRADES: Upgrade[] = [
   {
     id: 'longer_timer',
     name: 'Overtime',
-    icon: '⏰',
-    desc: (lvl) => `+${lvl * 5}s timer`,
+    icon: EMOJI_TIMER,
+    desc: (lvl) => {
+      const sPerLvl = getTimerUpgradeSecondsPerLevel(state.prestigeCount);
+      return `+${lvl * sPerLvl}s timer (+${sPerLvl}s/level)`;
+    },
     baseCost: 75,
     costMultiplier: 1.5,
-    effect: (lvl) => lvl * 5,
-  },
-  {
-    id: 'reveal_area',
-    name: 'Big Shovel',
-    icon: '🪣',
-    desc: (lvl) => `Reveals ${lvl + 2}x${lvl + 2} area per click`,
-    baseCost: 200,
-    costMultiplier: 1.8,
-    effect: (lvl) => lvl + 1,
+    effect: (lvl) => lvl * getTimerUpgradeSecondsPerLevel(state.prestigeCount),
   },
   {
     id: 'auto_flag',
     name: 'Mine Detector',
-    icon: '🚩',
+    icon: EMOJI_DETECTOR,
     desc: (lvl) => lvl === 0 ? 'Auto-flags mines (still earns $!)' : `Flags ${lvl + 1} mine(s) per tick`,
     baseCost: 300,
     costMultiplier: 1.5,
@@ -61,42 +56,54 @@ export const UPGRADES: Upgrade[] = [
   {
     id: 'auto_flag_speed',
     name: 'Faster Detector',
-    icon: '📡',
-    // Linear cost steps: 200, 400, 600, 800 … much more gradual than exponential
-    desc: (lvl) => `Auto-flags every ${autoSpeedMs(lvl)}ms`,
+    icon: EMOJI_RADAR,
+    desc: (lvl) => {
+      const bots = Math.floor(lvl / CONFIG.BOT_LEVEL_INTERVAL) + 1;
+      const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
+      return `${bots} bot${bots > 1 ? 's' : ''} @ ${autoSpeedMs(speedLvl)}ms`;
+    },
     baseCost: 200,
     costMultiplier: 1.35,
-    effect: (lvl) => autoSpeedMs(lvl),
+    effect: (lvl) => {
+      const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
+      return autoSpeedMs(speedLvl);
+    },
   },
   {
     id: 'auto_clear',
     name: 'Auto-Miner',
-    icon: '🤖',
+    icon: EMOJI_BOT,
     desc: (lvl) => lvl === 0 ? 'Unlocks auto-clearing safe tiles' : `Auto-clears ${lvl + 1} tile(s) per tick`,
     baseCost: 600,
-    costMultiplier: 1.5,
+    costMultiplier: 2.2,
     effect: (lvl) => lvl + 1,
   },
   {
     id: 'auto_clear_speed',
     name: 'Faster Miner',
-    icon: '⚡',
-    desc: (lvl) => `Auto-clears every ${autoSpeedMs(lvl)}ms`,
+    icon: EMOJI_LIGHTNING,
+    desc: (lvl) => {
+      const bots = Math.floor(lvl / CONFIG.BOT_LEVEL_INTERVAL) + 1;
+      const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
+      return `${bots} bot${bots > 1 ? 's' : ''} @ ${autoSpeedMs(speedLvl)}ms`;
+    },
     baseCost: 400,
-    costMultiplier: 1.35,
-    effect: (lvl) => autoSpeedMs(lvl),
+    costMultiplier: 1.5,
+    effect: (lvl) => {
+      const speedLvl = lvl % CONFIG.BOT_LEVEL_INTERVAL;
+      return autoSpeedMs(speedLvl);
+    },
   },
 ];
 
-/**
-  * Speed curve for auto timers.
- * Each level multiplies the interval by 0.65 (35% faster per level).
- * Level 0: 5000ms, 1: 3250ms, 2: 2112ms, 3: 1373ms, 4: 893ms,
- * 5: 580ms, 6: 377ms, 7: 245ms, 8: 159ms, 9: 103ms, 10: 67ms ...
- * No hard floor — it keeps getting faster, just with diminishing returns.
- */
-function autoSpeedMs(lvl: number): number {
-  return Math.max(1, Math.round(5000 * Math.pow(0.65, lvl)));
+function autoSpeedMs(speedLvl: number): number {
+  return Math.max(0.1, Math.round(5000 * Math.pow(0.65, speedLvl)));
+}
+
+export function getBotCount(id: 'auto_clear_speed' | 'auto_flag_speed'): number {
+  const lvl = state.upgrades[id];
+  if (lvl === 0) return 1;
+  return Math.floor(lvl / CONFIG.BOT_LEVEL_INTERVAL) + 1;
 }
 
 export const UPGRADE_MAP: Record<UpgradeId, Upgrade> = Object.fromEntries(
@@ -104,7 +111,7 @@ export const UPGRADE_MAP: Record<UpgradeId, Upgrade> = Object.fromEntries(
 ) as Record<UpgradeId, Upgrade>;
 
 export function effectiveMaxLevel(_id: UpgradeId): number {
-  return getEffectiveMaxLevel(state.prestigeCount);
+  return Infinity;
 }
 
 export function upgradeCost(upgrade: Upgrade, currentLevel: number): number {

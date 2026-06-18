@@ -1,25 +1,30 @@
 import { flagModeBtn, zoomInBtn, zoomOutBtn, zoomLabel } from './dom';
 import { state } from '../state/state';
+import { resizeCanvas } from './renderer';
 
 // ============================================================
 //  TOOLBAR
 // ============================================================
 
-// Tile sizes in px, from smallest to largest
-const ZOOM_STEPS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 52, 60];
+const ZOOM_STEPS = [2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 52, 60];
 const ZOOM_DEFAULT_PX = 36;
-const ZOOM_DEFAULT_IDX = ZOOM_STEPS.indexOf(ZOOM_DEFAULT_PX); // index of 36px
+const ZOOM_DEFAULT_IDX = ZOOM_STEPS.indexOf(ZOOM_DEFAULT_PX);
 
 let zoomIdx = ZOOM_DEFAULT_IDX;
 let flagMode = false;
 
+// Track last prestige count so we only auto-fit when board size actually changes
+let lastPrestigeCount = -1;
+
 export function getFlagMode() { return flagMode; }
 
-// Auto-miner paused state lives here so it can be read by timers without
-// going through the DOM. The toggle button is now inside the upgrade item.
 let autoMinerPaused = false;
 export function getAutoMinerPaused() { return autoMinerPaused; }
 export function setAutoMinerPaused(val: boolean) { autoMinerPaused = val; }
+
+let autoFlaggerPaused = false;
+export function getAutoFlaggerPaused() { return autoFlaggerPaused; }
+export function setAutoFlaggerPaused(val: boolean) { autoFlaggerPaused = val; }
 
 export function initToolbar() {
   flagModeBtn.addEventListener('click', () => {
@@ -33,31 +38,36 @@ export function initToolbar() {
     if (zoomIdx < ZOOM_STEPS.length - 1) { zoomIdx++; applyZoom(); }
   });
   zoomOutBtn.addEventListener('click', () => {
-    const minIdx = getMinZoomIdx();
-    if (zoomIdx > minIdx) { zoomIdx--; applyZoom(); }
+    if (zoomIdx > 0) { zoomIdx--; applyZoom(); }
   });
 
   applyZoom();
 }
 
-/** Clamp zoom index so the board never exceeds ~85vw / 50vh. */
-function getMinZoomIdx(): number {
+/**
+ * Auto-fit zoom: only recalculates zoom level when the board size changes
+ * (prestige or first load). Manual zoom adjustments by the player are preserved
+ * between boards.
+ */
+export function autoFitZoom(forceRefit = false) {
+  const currentPrestige = state.prestigeCount ?? 0;
+  const prestigeChanged = currentPrestige !== lastPrestigeCount;
 
-  // Find the largest step that is <= maxTilePx; everything above it is fine,
-  // but we want to make sure even the MINIMUM step isn't too large.
-  // We want the minimum allowed zoom to be the smallest step that still looks ok.
-  // Practically: just return 0 (always allow zooming to 12px).
-  return 0;
-}
+  if (!forceRefit && !prestigeChanged) {
+    // Board size unchanged — just re-apply current zoom (handles canvas resize after renderBoard)
+    applyZoom();
+    return;
+  }
 
-export function autoFitZoom() {
+  lastPrestigeCount = currentPrestige;
+
   const cols = state.cols ?? 7;
   const rows = state.rows ?? 7;
 
   const container = document.getElementById('board-container');
   if (!container) return;
 
-  const usableW = container.clientWidth  - 4;  // subtract border
+  const usableW = container.clientWidth  - 4;
   const usableH = container.clientHeight - 4;
 
   const maxByWidth  = Math.floor(usableW / cols);
@@ -72,21 +82,27 @@ export function autoFitZoom() {
   applyZoom();
 }
 
+/**
+ * applyZoom:
+ * 1. Sets the CSS custom property (used by DOM tiles and board-header/footer sizing)
+ * 2. Calls resizeCanvas so the canvas buffer is immediately rebuilt at the new pixel size
+ *    This is the key fix — previously the canvas kept its old baked-in pixel size.
+ */
 function applyZoom() {
   const px = ZOOM_STEPS[zoomIdx];
+
+  // Update CSS var — DOM tiles and board-header/footer read this
   document.documentElement.style.setProperty('--tile-size', `${px}px`);
 
-  // Keep board element sized explicitly so it expands horizontally
-  const boardEl = document.getElementById('board');
-  if (boardEl && state.cols && state.rows) {
-    boardEl.style.width  = `${state.cols * px}px`;
-    boardEl.style.height = `${state.rows * px}px`;
-  }
-
+  // Update button states and label
   const pct = Math.round((px / ZOOM_DEFAULT_PX) * 100);
   zoomLabel.textContent = `${pct}%`;
   (zoomOutBtn as HTMLButtonElement).disabled = zoomIdx === 0;
   (zoomInBtn  as HTMLButtonElement).disabled = zoomIdx === ZOOM_STEPS.length - 1;
+
+  // Resize the canvas (or DOM board) to match the new tile size.
+  // resizeCanvas is a no-op when called before the first renderBoard.
+  resizeCanvas(px);
 }
 
 export function squareBoardContainer() {
@@ -94,10 +110,9 @@ export function squareBoardContainer() {
   const container  = document.getElementById('board-container');
   if (!boardPanel || !container) return;
 
-  // Available space minus padding (10px each side)
   const availW = boardPanel.clientWidth  - 20;
   const availH = boardPanel.clientHeight - 20;
-  const size   = Math.min(availW, availH); // square: take the smaller dimension
+  const size   = Math.min(availW, availH);
   container.style.width  = `${size}px`;
   container.style.height = `${size}px`;
   document.documentElement.style.setProperty('--board-container-size', `${size}px`);

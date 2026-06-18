@@ -1,18 +1,18 @@
 import type { UpgradeId } from '../state/types';
 import { state } from '../state/state';
-import { UPGRADES, UPGRADE_MAP, upgradeCost, effectiveMaxLevel } from './upgrades';
+import { UPGRADES, UPGRADE_MAP, upgradeCost, getBotCount } from './upgrades';
 import { formatMoney } from '../state/save';
 import { upgradesListEl } from '../ui/dom';
 import { updateHUD, showToast, updateTimerDisplay } from '../ui/hud';
 import { startAutoClearTimer, startAutoFlagTimer } from '../game/timers';
-import { getStartingTime } from '../config';
-import { setAutoMinerPaused, getAutoMinerPaused } from '../ui/toolbar';
+import { getStartingTime, CONFIG } from '../config';
+import { setAutoMinerPaused, getAutoMinerPaused, setAutoFlaggerPaused, getAutoFlaggerPaused } from '../ui/toolbar';
+import { checkAchievements } from '../game/achievements';
 
 // ---- Category metadata ----
 const UPGRADE_CATEGORY: Record<UpgradeId, 'Income' | 'Automation' | 'Board'> = {
   money_per_tile:    'Income',
   board_clear_bonus: 'Income',
-  reveal_area:       'Income',
   longer_timer:      'Board',
   auto_clear:        'Automation',
   auto_clear_speed:  'Automation',
@@ -31,23 +31,6 @@ function isHidden(id: UpgradeId): boolean {
   return state.upgrades[gate.req] < gate.minLevel;
 }
 
-// ---- Sounds ----
-function playMilestoneChime() {
-  try {
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
-      const osc = ctx.createOscillator(), gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'sine'; osc.frequency.value = freq;
-      const t = ctx.currentTime + i * 0.1;
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.18, t + 0.03);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
-      osc.start(t); osc.stop(t + 0.35);
-    });
-  } catch { /* noop */ }
-}
-
 function playUnlockChime() {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -62,6 +45,22 @@ function playUnlockChime() {
   } catch { /* noop */ }
 }
 
+function playBotUnlockChime() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    [440, 550, 660, 880, 1100].forEach((freq, i) => {
+      const osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'square'; osc.frequency.value = freq;
+      const t = ctx.currentTime + i * 0.08;
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.12, t + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+      osc.start(t); osc.stop(t + 0.25);
+    });
+  } catch { /* noop */ }
+}
+
 // ---- Render ----
 export function renderUpgrades() {
   upgradesListEl.innerHTML = '';
@@ -70,7 +69,6 @@ export function renderUpgrades() {
     el.className = 'upgrade-item';
     el.dataset.id = upgrade.id;
 
-    // Buy on click, but NOT when clicking the pause toggle
     el.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('.auto-miner-toggle-btn')) return;
       buyUpgrade(upgrade.id);
@@ -82,14 +80,15 @@ export function renderUpgrades() {
 }
 
 export function updateUpgradeElement(id: UpgradeId) {
-  const upgrade = UPGRADE_MAP[id];
-  const level   = state.upgrades[id];
-  const maxLvl  = effectiveMaxLevel(id);
-  const maxed   = level >= maxLvl;
-  const cost    = upgradeCost(upgrade, level);
-  const canAfford = state.money >= cost;
-  const hidden  = isHidden(id);
-  const category = UPGRADE_CATEGORY[id];
+  const upgrade    = UPGRADE_MAP[id];
+  const level      = state.upgrades[id];
+  const cost       = upgradeCost(upgrade, level);
+  const canAfford  = state.money >= cost;
+  const hidden     = isHidden(id);
+  const category   = UPGRADE_CATEGORY[id];
+
+  const isSpeedUpgrade    = id === 'auto_clear_speed' || id === 'auto_flag_speed';
+  const nextLevelIsNewBot = isSpeedUpgrade && level > 0 && (level % CONFIG.BOT_LEVEL_INTERVAL === 0);
 
   const el = upgradesListEl.querySelector(`[data-id="${id}"]`) as HTMLElement;
   if (!el) return;
@@ -102,21 +101,32 @@ export function updateUpgradeElement(id: UpgradeId) {
   el.classList.remove('upgrade-hidden');
 
   el.className = 'upgrade-item';
-  if (maxed)        el.classList.add('maxed');
-  else if (!canAfford) el.classList.add('cannot-afford');
+  if (!canAfford) el.classList.add('cannot-afford');
 
   const categoryClass = `cat-${category.toLowerCase()}`;
+  const botBadge = nextLevelIsNewBot
+    ? `<span class="upgrade-bot-badge">🤖 +1 BOT</span>`
+    : '';
 
-  const costHtml = maxed
-    ? `<div class="upgrade-cost upgrade-prestige-locked">🔒 Prestige</div>`
-    : `<div class="upgrade-cost ${canAfford ? 'affordable' : ''}">${formatMoney(cost)}</div>`;
+  const costHtml = `<div class="upgrade-cost ${canAfford ? 'affordable' : ''}">${formatMoney(cost)}${botBadge}</div>`;
 
-  // Inline pause/resume button — only shown when auto_clear is active (level >= 1)
-  const isAutoClear = id === 'auto_clear';
-  const showPauseBtn = isAutoClear && level >= 1;
-  const paused = getAutoMinerPaused();
-  const pauseHtml = showPauseBtn
-    ? `<button class="auto-miner-toggle-btn tool-btn ${paused ? 'paused' : ''}" title="Pause/resume auto-miner">
+  let levelText = '';
+  if (level > 0) {
+    if (isSpeedUpgrade) {
+      const bots = getBotCount(id as 'auto_clear_speed' | 'auto_flag_speed');
+      levelText = `<div class="upgrade-level">Lvl ${level} · ${bots} bot${bots > 1 ? 's' : ''}</div>`;
+    } else {
+      levelText = `<div class="upgrade-level">Lvl ${level}</div>`;
+    }
+  }
+
+  const isAutoClear   = id === 'auto_clear';
+  const isAutoFlag    = id === 'auto_flag';
+  const showPauseBtn  = (isAutoClear || isAutoFlag) && level >= 1;
+  const paused        = isAutoFlag ? getAutoFlaggerPaused() : getAutoMinerPaused();
+  const pauseTitle    = isAutoFlag ? 'Pause/resume auto-flagger' : 'Pause/resume auto-miner';
+  const pauseHtml     = showPauseBtn
+    ? `<button class="auto-miner-toggle-btn tool-btn ${paused ? 'paused' : ''}" title="${pauseTitle}">
          ${paused ? '⏸ OFF' : '▶ ON'}
        </button>`
     : '';
@@ -129,7 +139,7 @@ export function updateUpgradeElement(id: UpgradeId) {
         <span class="upgrade-category ${categoryClass}">${category}</span>
       </div>
       <div class="upgrade-desc">${upgrade.desc(level)}</div>
-      ${level > 0 ? `<div class="upgrade-level">Lvl ${level}/${maxLvl}</div>` : ''}
+      ${levelText}
     </div>
     <div class="upgrade-right">
       ${pauseHtml}
@@ -137,13 +147,17 @@ export function updateUpgradeElement(id: UpgradeId) {
     </div>
   `;
 
-  // Wire up pause button after innerHTML is set
   if (showPauseBtn) {
     const btn = el.querySelector('.auto-miner-toggle-btn') as HTMLButtonElement;
     btn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      setAutoMinerPaused(!getAutoMinerPaused());
-      updateUpgradeElement('auto_clear');
+      if (isAutoFlag) {
+        setAutoFlaggerPaused(!getAutoFlaggerPaused());
+        updateUpgradeElement('auto_flag');
+      } else {
+        setAutoMinerPaused(!getAutoMinerPaused());
+        updateUpgradeElement('auto_clear');
+      }
     });
   }
 }
@@ -160,23 +174,23 @@ function triggerMilestoneAnimation(el: HTMLElement) {
 }
 
 function buyUpgrade(id: UpgradeId) {
-  const upgrade = UPGRADE_MAP[id];
-  const level   = state.upgrades[id];
-  const maxLvl  = effectiveMaxLevel(id);
-  if (level >= maxLvl) return;
+  const upgrade  = UPGRADE_MAP[id];
+  const level    = state.upgrades[id];
   if (isHidden(id)) return;
 
   const cost = upgradeCost(upgrade, level);
   if (state.money < cost) return;
 
-  const wasLevelZero = level === 0;
-  const willBeMax    = level + 1 >= maxLvl;
+  const wasLevelZero      = level === 0;
+  const isSpeedUpgrade    = id === 'auto_clear_speed' || id === 'auto_flag_speed';
+  const crossesBotBoundary = isSpeedUpgrade && level > 0 && (level % CONFIG.BOT_LEVEL_INTERVAL === 0);
 
   state.money -= cost;
   state.upgrades[id]++;
 
   updateUpgradesAffordability();
   updateHUD();
+  checkAchievements();
 
   const el = upgradesListEl.querySelector(`[data-id="${id}"]`) as HTMLElement;
 
@@ -184,10 +198,11 @@ function buyUpgrade(id: UpgradeId) {
     playUnlockChime();
     if (el) triggerMilestoneAnimation(el);
     showToast(`🔓 ${upgrade.name} unlocked!`);
-  } else if (willBeMax) {
-    playMilestoneChime();
+  } else if (crossesBotBoundary) {
+    playBotUnlockChime();
     if (el) triggerMilestoneAnimation(el);
-    showToast(`🔒 ${upgrade.name} capped — prestige to unlock more!`);
+    const newBots = getBotCount(id as 'auto_clear_speed' | 'auto_flag_speed');
+    showToast(`🤖 New bot! ${upgrade.name} now has ${newBots} bots!`);
   } else {
     showToast(`${upgrade.icon} ${upgrade.name} upgraded!`);
   }
@@ -203,5 +218,4 @@ function buyUpgrade(id: UpgradeId) {
   }
 }
 
-// Kept for compatibility — toolbar used to call this
-export function setAutoMinerPausedGetterForUpgrades(_fn: () => boolean) { /* no-op, toolbar owns state now */ }
+export function setAutoMinerPausedGetterForUpgrades(_fn: () => boolean) { /* no-op */ }

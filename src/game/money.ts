@@ -7,8 +7,6 @@ import { updateUpgradesAffordability } from '../upgrades/upgrades-ui';
 //  MONEY
 // ============================================================
 
-
-
 export function calcTileEarnings(tileCount: number): number {
   const rate = UPGRADE_MAP['money_per_tile'].effect(state.upgrades.money_per_tile);
   return Math.floor(tileCount * rate * state.prestigeMultiplier);
