@@ -67,14 +67,15 @@ export const CONFIG = {
 // ---- Derived helpers (pure functions, no state) ----
 
 export function getBoardDims(prestigeCount: number): { cols: number; rows: number; mineCount: number } {
-  const cols = CONFIG.baseCols + prestigeCount * CONFIG.prestigeColsPerLevel;
-  const rows = CONFIG.baseRows + prestigeCount * CONFIG.prestigeRowsPerLevel;
+  // Cap at 100×100 = 10,000 tiles — still a huge board, manageable with canvas
+  const cols = Math.min(100, CONFIG.baseCols + prestigeCount * CONFIG.prestigeColsPerLevel);
+  const rows = Math.min(100, CONFIG.baseRows + prestigeCount * CONFIG.prestigeRowsPerLevel);
   const mineCount = Math.max(1, Math.floor(cols * rows * CONFIG.baseMineRatio));
   return { cols, rows, mineCount };
 }
 
-export function getStartingTime(prestigeCount: number): number {
-  return CONFIG.baseTimeLeft + prestigeCount * CONFIG.prestigeTimePerLevel;
+export function getStartingTime(_prestigeCount: number): number {
+  return CONFIG.baseTimeLeft;
 }
 
 export function getEffectiveMaxLevel(_prestigeCount: number): number {
@@ -97,6 +98,6 @@ export function getPrestigeMultiplier(prestigeCount: number): number {
   return 1 + prestigeCount * 0.5;
 }
 
-export function getTimerUpgradeSecondsPerLevel(_prestigeCount: number): number {
-  return 5; // flat +5 seconds per level, regardless of prestige
+export function getTimerUpgradeSecondsPerLevel(prestigeCount: number): number {
+  return 5 + prestigeCount * 2;
 }

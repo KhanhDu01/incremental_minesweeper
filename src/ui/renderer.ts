@@ -2,6 +2,7 @@ import type { TileState } from '../state/types';
 import { state, tiles, setTiles, setBoardInitialized } from '../state/state';
 import { boardEl } from './dom';
 import { EMOJI_FLAG_TILE } from '../assets/index';
+import { rebuildTileIndex } from '../state/tile-index';
 
 type ClickHandler = (r: number, c: number) => void;
 let _onTileClick: ClickHandler = () => {};
@@ -12,11 +13,27 @@ export function setTileHandlers(click: ClickHandler, rightClick: ClickHandler) {
   _onTileRightClick = rightClick;
 }
 
-const CANVAS_THRESHOLD_PX = 6;
+// Force canvas when tile count exceeds this (DOM is catastrophic beyond ~5k elements)
 const CANVAS_THRESHOLD_TILES = 5_000;
+const CANVAS_THRESHOLD_PX    = 6;
 
 let usingCanvas = false;
 let canvasEl: HTMLCanvasElement | null = null;
+let canvasCtx: CanvasRenderingContext2D | null = null;
+let canvasPx = 1; // current tile pixel size on canvas
+
+// ---- Dirty-region tracking for partial redraws ----
+let dirtyKeys = new Set<number>(); // encoded as r * cols + c
+let fullRedrawPending = false;
+
+export function markTileDirty(r: number, c: number) {
+  dirtyKeys.add(r * state.cols + c);
+}
+
+export function markFullRedraw() {
+  fullRedrawPending = true;
+  dirtyKeys.clear();
+}
 
 export function renderBoard() {
   const { rows, cols } = state;
@@ -28,13 +45,18 @@ export function renderBoard() {
       }))
     ));
     setBoardInitialized(false);
+    rebuildTileIndex(tiles, rows, cols);
   }
 
   const tileSize = getTileSize();
-  usingCanvas = (state.rows * state.cols) > CANVAS_THRESHOLD_TILES || tileSize < CANVAS_THRESHOLD_PX;
+  const tileCount = rows * cols;
+  usingCanvas = tileCount > CANVAS_THRESHOLD_TILES || tileSize < CANVAS_THRESHOLD_PX;
 
   boardEl.innerHTML = '';
-  canvasEl = null;
+  canvasEl  = null;
+  canvasCtx = null;
+  dirtyKeys.clear();
+  fullRedrawPending = false;
 
   if (usingCanvas) {
     renderCanvas(rows, cols, tileSize);
@@ -47,105 +69,174 @@ export function renderBoard() {
 
 function renderCanvas(rows: number, cols: number, tileSize: number) {
   const canvas = document.createElement('canvas');
-  const pixelSize = Math.max(1, tileSize);
-  canvas.width  = cols * pixelSize;
-  canvas.height = rows * pixelSize;
+  canvasPx = Math.max(1, tileSize);
+  canvas.width  = cols * canvasPx;
+  canvas.height = rows * canvasPx;
   canvas.style.display = 'block';
   canvas.style.imageRendering = 'pixelated';
-  canvasEl = canvas;
+  canvasEl  = canvas;
+  canvasCtx = canvas.getContext('2d');
 
   canvas.addEventListener('click', (e) => {
-    const [r, c] = canvasCoords(e, canvas, pixelSize);
+    const [r, c] = canvasCoords(e, canvas);
     if (r >= 0) _onTileClick(r, c);
   });
   canvas.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    const [r, c] = canvasCoords(e, canvas, pixelSize);
+    const [r, c] = canvasCoords(e, canvas);
     if (r >= 0) _onTileRightClick(r, c);
   });
 
   boardEl.style.width  = `${canvas.width}px`;
   boardEl.style.height = `${canvas.height}px`;
   boardEl.appendChild(canvas);
-  drawCanvas();
+  drawCanvasFull();
 }
 
-function canvasCoords(e: MouseEvent, canvas: HTMLCanvasElement, pixelSize: number): [number, number] {
+/**
+ * Called by applyZoom whenever tile-size changes while in canvas mode.
+ * Resizes the canvas buffer in-place and redraws — no DOM listener churn.
+ * For DOM mode, renderBoard() is called instead (tile divs must be re-measured).
+ */
+export function resizeCanvas(newTilePx: number) {
+  if (!usingCanvas) {
+    // DOM mode: just re-render (tile size change is already applied via CSS var)
+    renderBoard();
+    return;
+  }
+  if (!canvasEl || !canvasCtx) return;
+  const { rows, cols } = state;
+  canvasPx = Math.max(1, newTilePx);
+  canvasEl.width  = cols * canvasPx;
+  canvasEl.height = rows * canvasPx;
+  boardEl.style.width  = `${canvasEl.width}px`;
+  boardEl.style.height = `${canvasEl.height}px`;
+  dirtyKeys.clear();
+  fullRedrawPending = false;
+  drawCanvasFull();
+}
+
+function canvasCoords(e: MouseEvent, canvas: HTMLCanvasElement): [number, number] {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width  / rect.width;
   const scaleY = canvas.height / rect.height;
   const x = (e.clientX - rect.left) * scaleX;
   const y = (e.clientY - rect.top)  * scaleY;
-  const c = Math.floor(x / pixelSize);
-  const r = Math.floor(y / pixelSize);
+  const c = Math.floor(x / canvasPx);
+  const r = Math.floor(y / canvasPx);
   if (r < 0 || r >= state.rows || c < 0 || c >= state.cols) return [-1, -1];
   return [r, c];
 }
 
-export function drawCanvas() {
-  if (!canvasEl) return;
-  const ctx = canvasEl.getContext('2d');
-  if (!ctx) return;
-  const { rows, cols } = state;
-  const px = canvasEl.width / cols;
+// Pre-computed colour strings
+const COLOR_UNREVEALED = '#5a5a5a';
+const COLOR_FLAGGED     = '#c04000';
+const COLOR_REVEALED_0  = '#e8e8e8';
+const COLOR_REVEALED_N  = '#a0a0a0';
+const COLOR_MINE        = '#cc0000';
+const COLOR_BORDER_LT   = '#ffffff';
+const COLOR_BORDER_DK   = '#808080';
+const COLOR_BORDER_THIN = '#404040';
+const COLOR_FLAG_DOT    = '#ff4400';
 
+// Number colours matching the classic minesweeper palette used by DOM tiles
+const NUMBER_COLORS = [
+  '',        // 0 — not drawn
+  '#0000ff', // 1
+  '#008000', // 2
+  '#ff0000', // 3
+  '#000080', // 4
+  '#800000', // 5
+  '#008080', // 6
+  '#000000', // 7
+  '#808080', // 8
+];
+
+function tileCanvasColor(tile: TileState): string {
+  if (tile.isRevealed) {
+    if (tile.isMine)            return COLOR_MINE;
+    if (tile.adjacentMines > 0) return COLOR_REVEALED_N;
+    return COLOR_REVEALED_0;
+  }
+  if (tile.isFlagged) return COLOR_FLAGGED;
+  return COLOR_UNREVEALED;
+}
+
+function drawTileToCanvas(ctx: CanvasRenderingContext2D, r: number, c: number, px: number) {
+  const tile = tiles[r][c];
+  const x = c * px;
+  const y = r * px;
+
+  ctx.fillStyle = tileCanvasColor(tile);
+  ctx.fillRect(x, y, px, px);
+
+  if (px >= 3) {
+    if (!tile.isRevealed) {
+      ctx.fillStyle = COLOR_BORDER_LT;
+      ctx.fillRect(x, y, px - 1, 1);
+      ctx.fillRect(x, y, 1, px - 1);
+      ctx.fillStyle = COLOR_BORDER_DK;
+      ctx.fillRect(x + px - 1, y, 1, px);
+      ctx.fillRect(x, y + px - 1, px, 1);
+    } else {
+      ctx.fillStyle = COLOR_BORDER_DK;
+      ctx.fillRect(x, y, px, 1);
+      ctx.fillRect(x, y, 1, px);
+    }
+  } else {
+    ctx.fillStyle = COLOR_BORDER_THIN;
+    ctx.fillRect(x + px - 1, y, 1, px);
+    ctx.fillRect(x, y + px - 1, px, 1);
+  }
+
+  if (tile.isFlagged && !tile.isRevealed && px >= 2) {
+    ctx.fillStyle = COLOR_FLAG_DOT;
+    const dot    = Math.max(1, Math.floor(px * 0.4));
+    const offset = Math.floor((px - dot) / 2);
+    ctx.fillRect(x + offset, y + offset, dot, dot);
+  }
+
+  // Draw adjacency number — only visible when tile is revealed, not a mine,
+  // and the tile is large enough to show text (>= 8px)
+  if (tile.isRevealed && !tile.isMine && tile.adjacentMines > 0 && px >= 8) {
+    const fontSize = Math.floor(px * 0.6);
+    ctx.font = `bold ${fontSize}px monospace`;
+    ctx.fillStyle = NUMBER_COLORS[tile.adjacentMines] ?? '#000000';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(String(tile.adjacentMines), x + px / 2, y + px / 2);
+  }
+}
+
+export function drawCanvasFull() {
+  if (!canvasEl || !canvasCtx) return;
+  const { rows, cols } = state;
+  const px = canvasPx;
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      const tile = tiles[r][c];
-      const x = c * px;
-      const y = r * px;
-
-      ctx.fillStyle = tileBaseColor(tile);
-      ctx.fillRect(x, y, px, px);
-
-      if (px >= 3) {
-        if (!tile.isRevealed) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(x, y, px - 1, 1);
-          ctx.fillRect(x, y, 1, px - 1);
-          ctx.fillStyle = '#808080';
-          ctx.fillRect(x + px - 1, y, 1, px);
-          ctx.fillRect(x, y + px - 1, px, 1);
-        } else {
-          ctx.fillStyle = '#909090';
-          ctx.fillRect(x, y, px, 1);
-          ctx.fillRect(x, y, 1, px);
-        }
-      } else {
-        ctx.fillStyle = '#404040';
-        ctx.fillRect(x + px - 1, y, 1, px);
-        ctx.fillRect(x, y + px - 1, px, 1);
-      }
-
-      if (tile.isFlagged && !tile.isRevealed && px >= 2) {
-        ctx.fillStyle = '#ff4400';
-        const dot = Math.max(1, Math.floor(px * 0.4));
-        const offset = Math.floor((px - dot) / 2);
-        ctx.fillRect(x + offset, y + offset, dot, dot);
-      }
+      drawTileToCanvas(canvasCtx, r, c, px);
     }
   }
+  dirtyKeys.clear();
+  fullRedrawPending = false;
 }
 
-function tileBaseColor(tile: TileState): string {
-  if (tile.isRevealed) {
-    if (tile.isMine)            return '#cc0000';
-    if (tile.adjacentMines > 0) return '#a0a0a0';
-    return '#e8e8e8';
+export function flushDirtyTiles() {
+  if (!canvasEl || !canvasCtx) return;
+  if (fullRedrawPending) { drawCanvasFull(); return; }
+  if (dirtyKeys.size === 0) return;
+  const px   = canvasPx;
+  const cols = state.cols;
+  for (const key of dirtyKeys) {
+    const r = Math.floor(key / cols);
+    const c = key % cols;
+    drawTileToCanvas(canvasCtx, r, c, px);
   }
-  if (tile.isFlagged) return '#c04000';
-  return '#5a5a5a';
+  dirtyKeys.clear();
 }
 
-function tileColor(tile: TileState): string {
-  if (tile.isRevealed) {
-    if (tile.isMine)            return '#ff0000';
-    if (tile.adjacentMines > 0) return '#888888';
-    return '#c8c8c8';
-  }
-  if (tile.isFlagged) return '#ff8800';
-  return '#c0c0c0';
-}
+// Legacy alias
+export function drawCanvas() { drawCanvasFull(); }
 
 // ---- DOM rendering ----
 
@@ -154,6 +245,7 @@ function renderDom(rows: number, cols: number, tileSize: number) {
   boardEl.style.width  = `${cols * tileSize}px`;
   boardEl.style.height = `${rows * tileSize}px`;
 
+  const frag = document.createDocumentFragment();
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       const el = document.createElement('div');
@@ -164,9 +256,10 @@ function renderDom(rows: number, cols: number, tileSize: number) {
       el.addEventListener('contextmenu', (e) => { e.preventDefault(); _onTileRightClick(r, c); });
       setupLongPress(el, () => _onTileRightClick(r, c));
       updateTileElement(el, tiles[r][c]);
-      boardEl.appendChild(el);
+      frag.appendChild(el);
     }
   }
+  boardEl.appendChild(frag);
 }
 
 // ---- Shared helpers ----
@@ -199,12 +292,7 @@ export function getTileEl(r: number, c: number): HTMLElement | null {
 
 export function refreshTile(r: number, c: number) {
   if (usingCanvas) {
-    if (!canvasEl) return;
-    const ctx = canvasEl.getContext('2d');
-    if (!ctx) return;
-    const px = Math.max(1, canvasEl.width / state.cols);
-    ctx.fillStyle = tileColor(tiles[r][c]);
-    ctx.fillRect(c * px, r * px, px, px);
+    markTileDirty(r, c);
     return;
   }
   const el = getTileEl(r, c);
@@ -217,10 +305,7 @@ function setupLongPress(el: HTMLElement, callback: () => void) {
 
   el.addEventListener('touchstart', () => {
     moved = false;
-    timer = setTimeout(() => {
-      if (!moved) callback();
-      timer = null;
-    }, 150);
+    timer = setTimeout(() => { if (!moved) callback(); timer = null; }, 150);
   }, { passive: true });
 
   el.addEventListener('touchmove', () => {
@@ -234,7 +319,7 @@ function setupLongPress(el: HTMLElement, callback: () => void) {
 
 export function refreshAllTiles() {
   if (usingCanvas) {
-    drawCanvas();
+    flushDirtyTiles();
     return;
   }
   for (let r = 0; r < state.rows; r++) {

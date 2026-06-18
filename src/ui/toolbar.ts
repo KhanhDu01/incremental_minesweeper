@@ -1,18 +1,19 @@
 import { flagModeBtn, zoomInBtn, zoomOutBtn, zoomLabel } from './dom';
 import { state } from '../state/state';
+import { resizeCanvas } from './renderer';
 
 // ============================================================
 //  TOOLBAR
 // ============================================================
 
-const ZOOM_STEPS = [3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 52, 60];
+const ZOOM_STEPS = [2, 3, 4, 5, 6, 8, 10, 12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 52, 60];
 const ZOOM_DEFAULT_PX = 36;
 const ZOOM_DEFAULT_IDX = ZOOM_STEPS.indexOf(ZOOM_DEFAULT_PX);
 
 let zoomIdx = ZOOM_DEFAULT_IDX;
 let flagMode = false;
 
-// Track last prestige count so we only auto-fit when prestige actually changes
+// Track last prestige count so we only auto-fit when board size actually changes
 let lastPrestigeCount = -1;
 
 export function getFlagMode() { return flagMode; }
@@ -20,6 +21,10 @@ export function getFlagMode() { return flagMode; }
 let autoMinerPaused = false;
 export function getAutoMinerPaused() { return autoMinerPaused; }
 export function setAutoMinerPaused(val: boolean) { autoMinerPaused = val; }
+
+let autoFlaggerPaused = false;
+export function getAutoFlaggerPaused() { return autoFlaggerPaused; }
+export function setAutoFlaggerPaused(val: boolean) { autoFlaggerPaused = val; }
 
 export function initToolbar() {
   flagModeBtn.addEventListener('click', () => {
@@ -40,15 +45,16 @@ export function initToolbar() {
 }
 
 /**
- * Auto-fit zoom only when the board size changes (prestige).
- * Otherwise the zoom level the player set is preserved.
+ * Auto-fit zoom: only recalculates zoom level when the board size changes
+ * (prestige or first load). Manual zoom adjustments by the player are preserved
+ * between boards.
  */
 export function autoFitZoom(forceRefit = false) {
   const currentPrestige = state.prestigeCount ?? 0;
   const prestigeChanged = currentPrestige !== lastPrestigeCount;
 
   if (!forceRefit && !prestigeChanged) {
-    // Board size hasn't changed — keep player's zoom
+    // Board size unchanged — just re-apply current zoom (handles canvas resize after renderBoard)
     applyZoom();
     return;
   }
@@ -76,20 +82,27 @@ export function autoFitZoom(forceRefit = false) {
   applyZoom();
 }
 
+/**
+ * applyZoom:
+ * 1. Sets the CSS custom property (used by DOM tiles and board-header/footer sizing)
+ * 2. Calls resizeCanvas so the canvas buffer is immediately rebuilt at the new pixel size
+ *    This is the key fix — previously the canvas kept its old baked-in pixel size.
+ */
 function applyZoom() {
   const px = ZOOM_STEPS[zoomIdx];
+
+  // Update CSS var — DOM tiles and board-header/footer read this
   document.documentElement.style.setProperty('--tile-size', `${px}px`);
 
-  const boardEl = document.getElementById('board');
-  if (boardEl && state.cols && state.rows) {
-    boardEl.style.width  = `${state.cols * px}px`;
-    boardEl.style.height = `${state.rows * px}px`;
-  }
-
+  // Update button states and label
   const pct = Math.round((px / ZOOM_DEFAULT_PX) * 100);
   zoomLabel.textContent = `${pct}%`;
   (zoomOutBtn as HTMLButtonElement).disabled = zoomIdx === 0;
   (zoomInBtn  as HTMLButtonElement).disabled = zoomIdx === ZOOM_STEPS.length - 1;
+
+  // Resize the canvas (or DOM board) to match the new tile size.
+  // resizeCanvas is a no-op when called before the first renderBoard.
+  resizeCanvas(px);
 }
 
 export function squareBoardContainer() {

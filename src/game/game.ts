@@ -5,10 +5,10 @@ import { renderBoard, setTileHandlers } from '../ui/renderer';
 import { onTileClick, onTileRightClick, setFlagModeGetter, setNewGameCallback } from './input';
 import { updateMineCounter, updateTimerDisplay, updateHUD, updatePrestigeBar } from '../ui/hud';
 import { updateUpgradesAffordability, renderUpgrades, setAutoMinerPausedGetterForUpgrades } from '../upgrades/upgrades-ui';
-import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMinerPausedGetter, stopAllTimers, setBoardTransitioning } from './timers';
+import { startMpsTimer, startSaveTimer, setNewGameCallbackForTimers, setAutoMinerPausedGetter, setAutoFlaggerPausedGetter, stopAllTimers, setBoardTransitioning, startAutoClearTimer, startAutoFlagTimer } from './timers';
 import { stopGameTimer } from './timers';
 import { prestige, setNewGameCallbackForPrestige } from './prestige';
-import { initToolbar, getFlagMode, getAutoMinerPaused, autoFitZoom, squareBoardContainer } from '../ui/toolbar';
+import { initToolbar, getFlagMode, getAutoMinerPaused, getAutoFlaggerPaused, autoFitZoom, squareBoardContainer } from '../ui/toolbar';
 import { initDevPanel } from '../ui/devPanel';
 import { getStartingTime } from '../config';
 import { applyOfflineEarnings } from './offline';
@@ -50,6 +50,8 @@ export function resetGame() {
   newGame();
   startSaveTimer();
   startMpsTimer();
+  startAutoClearTimer();
+  startAutoFlagTimer();
   updateHUD();
 }
 
@@ -61,6 +63,7 @@ export function init() {
   setNewGameCallbackForPrestige(newGame);
   setFlagModeGetter(getFlagMode);
   setAutoMinerPausedGetter(getAutoMinerPaused);
+  setAutoFlaggerPausedGetter(getAutoFlaggerPaused);
   setAutoMinerPausedGetterForUpgrades(getAutoMinerPaused);
   setTileHandlers(onTileClick, onTileRightClick);
 
@@ -84,6 +87,8 @@ export function init() {
       newGame();
       startSaveTimer();
       startMpsTimer();
+      startAutoClearTimer();
+      startAutoFlagTimer();
       updateHUD();
     });
   });
@@ -97,7 +102,7 @@ function initTabs() {
   const tabUpgrades       = document.getElementById('tab-upgrades');
   const tabAchievements   = document.getElementById('tab-achievements');
 
-  if (!tabBoardBtn || !tabUpgradesBtn || !tabAchievementsBtn || !tabBoard || !tabUpgrades || !tabAchievements) return;
+  if (!tabBoardBtn || !tabUpgradesBtn || !tabBoard || !tabUpgrades) return;
 
   function showTab(name: 'board' | 'upgrades' | 'achievements') {
     tabBoard?.classList.toggle('hidden',        name !== 'board');
@@ -120,7 +125,7 @@ function initTabs() {
 
   tabBoardBtn.addEventListener('click', () => showTab('board'));
   tabUpgradesBtn.addEventListener('click', () => showTab('upgrades'));
-  tabAchievementsBtn.addEventListener('click', () => showTab('achievements'));
+  tabAchievementsBtn?.addEventListener('click', () => showTab('achievements'));
 
   window.addEventListener('resize', () => {
     requestAnimationFrame(() => {

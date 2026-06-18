@@ -6,7 +6,7 @@ import { upgradesListEl } from '../ui/dom';
 import { updateHUD, showToast, updateTimerDisplay } from '../ui/hud';
 import { startAutoClearTimer, startAutoFlagTimer } from '../game/timers';
 import { getStartingTime, CONFIG } from '../config';
-import { setAutoMinerPaused, getAutoMinerPaused } from '../ui/toolbar';
+import { setAutoMinerPaused, getAutoMinerPaused, setAutoFlaggerPaused, getAutoFlaggerPaused } from '../ui/toolbar';
 import { checkAchievements } from '../game/achievements';
 
 // ---- Category metadata ----
@@ -120,11 +120,13 @@ export function updateUpgradeElement(id: UpgradeId) {
     }
   }
 
-  const isAutoClear  = id === 'auto_clear';
-  const showPauseBtn = isAutoClear && level >= 1;
-  const paused       = getAutoMinerPaused();
-  const pauseHtml    = showPauseBtn
-    ? `<button class="auto-miner-toggle-btn tool-btn ${paused ? 'paused' : ''}" title="Pause/resume auto-miner">
+  const isAutoClear   = id === 'auto_clear';
+  const isAutoFlag    = id === 'auto_flag';
+  const showPauseBtn  = (isAutoClear || isAutoFlag) && level >= 1;
+  const paused        = isAutoFlag ? getAutoFlaggerPaused() : getAutoMinerPaused();
+  const pauseTitle    = isAutoFlag ? 'Pause/resume auto-flagger' : 'Pause/resume auto-miner';
+  const pauseHtml     = showPauseBtn
+    ? `<button class="auto-miner-toggle-btn tool-btn ${paused ? 'paused' : ''}" title="${pauseTitle}">
          ${paused ? '⏸ OFF' : '▶ ON'}
        </button>`
     : '';
@@ -149,8 +151,13 @@ export function updateUpgradeElement(id: UpgradeId) {
     const btn = el.querySelector('.auto-miner-toggle-btn') as HTMLButtonElement;
     btn?.addEventListener('click', (e) => {
       e.stopPropagation();
-      setAutoMinerPaused(!getAutoMinerPaused());
-      updateUpgradeElement('auto_clear');
+      if (isAutoFlag) {
+        setAutoFlaggerPaused(!getAutoFlaggerPaused());
+        updateUpgradeElement('auto_flag');
+      } else {
+        setAutoMinerPaused(!getAutoMinerPaused());
+        updateUpgradeElement('auto_clear');
+      }
     });
   }
 }

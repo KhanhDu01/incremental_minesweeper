@@ -5,11 +5,6 @@
 //  of hardcoding emoji strings anywhere else.
 // ============================================================
 
-// ---- UI / HUD ----
-export const EMOJI_MONEY     = '💰';
-export const EMOJI_MPS       = '⚡';
-export const EMOJI_BOARDS    = '🏆';
-
 // ---- Toolbar ----
 export const EMOJI_FLAG      = '🚩';
 export const EMOJI_DIG       = '✏️';

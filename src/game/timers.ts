@@ -1,8 +1,9 @@
 import { state, tiles, boardInitialized, setTiles, setBoardInitialized, commitMpsTick, getMpsRate } from '../state/state';
-import { createBoard, floodReveal, getSafeTiles, getMineTiles, shuffleArray } from '../board/board';
+import { createBoard, floodReveal, getSafeTilesFromIndex, getMineTilesFromIndex, getNearestSafeTiles, shuffleArray } from '../board/board';
+import { safeTileIndex, mineTileIndex, indexMarkFlagged } from '../state/tile-index';
 import { UPGRADE_MAP, getBotCount } from '../upgrades/upgrades';
 import { saveGame } from '../state/save';
-import { renderBoard, refreshAllTiles } from '../ui/renderer';
+import { renderBoard, markTileDirty, flushDirtyTiles } from '../ui/renderer';
 import { updateMineCounter, updateTimerDisplay, updateMpsDisplay, setSmiley, updateHUD } from '../ui/hud';
 import { earnMoneyQuiet } from './money';
 import { checkWin } from './input';
@@ -20,7 +21,6 @@ let saveTimer: ReturnType<typeof setInterval> | null = null;
 let mpsTimer:  ReturnType<typeof setInterval> | null = null;
 let renderPending = false;
 
-// Guards against bot + timeout both calling newGame after a win/loss
 let boardTransitioning = false;
 export function setBoardTransitioning(val: boolean) { boardTransitioning = val; }
 export function isBoardTransitioning() { return boardTransitioning; }
@@ -31,6 +31,13 @@ export function setNewGameCallbackForTimers(fn: () => void) { _newGame = fn; }
 let _getAutoMinerPaused: () => boolean = () => false;
 export function setAutoMinerPausedGetter(fn: () => boolean) { _getAutoMinerPaused = fn; }
 
+let _getAutoFlaggerPaused: () => boolean = () => false;
+export function setAutoFlaggerPausedGetter(fn: () => boolean) { _getAutoFlaggerPaused = fn; }
+
+// scheduleRender now uses partial redraws via flushDirtyTiles.
+// updateUpgradesAffordability re-renders every upgrade card — expensive.
+// We throttle it to at most once every 500ms to avoid UI lockup at high bot speeds.
+let lastAffordabilityUpdate = 0;
 export function scheduleRender() {
   if (renderPending) return;
   renderPending = true;
@@ -38,8 +45,12 @@ export function scheduleRender() {
     renderPending = false;
     updateMineCounter();
     updateHUD();
-    updateUpgradesAffordability();
-    refreshAllTiles();
+    const now = Date.now();
+    if (now - lastAffordabilityUpdate > 500) {
+      lastAffordabilityUpdate = now;
+      updateUpgradesAffordability();
+    }
+    flushDirtyTiles(); // only redraws changed tiles
   });
 }
 
@@ -56,10 +67,7 @@ export function startGameTimer() {
       stopGameTimer();
       setSmiley('😵');
       boardTransitioning = true;
-      setTimeout(() => {
-        boardTransitioning = false;
-        _newGame();
-      }, 1500);
+      setTimeout(() => { boardTransitioning = false; _newGame(); }, 1500);
     }
   }, 1000);
 }
@@ -88,7 +96,7 @@ function stopAutoFlagTimers() {
 
 // ---- Bot first-click: safe center tile, flood-reveals like player ----
 
-let botLastClearPos: [number, number] | null = null;
+let botLastClearKey: number = -1; // encoded r*cols+c
 
 export function autoStartBoard() {
   if (boardTransitioning) return;
@@ -103,7 +111,6 @@ export function autoStartBoard() {
   updateMineCounter();
   updateTimerDisplay();
 
-  // Pick the center tile as the safe starting point
   const r = Math.floor(state.rows / 2);
   const c = Math.floor(state.cols / 2);
 
@@ -112,17 +119,20 @@ export function autoStartBoard() {
   state.phase = 'playing';
   startGameTimer();
 
-  // Flood-reveal from center (same as player first click)
+  // Flood-reveal from center — index is already updated inside floodReveal
   const revealed = floodReveal(tiles, r, c, state.rows, state.cols);
   if (revealed.length > 0) earnMoneyQuiet(revealed.length);
-  botLastClearPos = [r, c];
+  botLastClearKey = r * state.cols + c;
 
   renderBoard();
   boardTransitioning = false;
 }
 
-// ---- Auto-clear (supports multiple bots) ----
-// Subsequent bot clears happen near the last cleared position
+// ---- Auto-clear ----
+// Uses index-based lookups — O(tilesPerTick) not O(rows*cols).
+// Proximity sort: pull candidate keys near botLastClearKey from the Set,
+// sort only those (small sample), avoiding sorting the entire safe set.
+
 
 export function startAutoClearTimer() {
   stopAutoClearTimers();
@@ -132,9 +142,7 @@ export function startAutoClearTimer() {
 
   const interval     = UPGRADE_MAP['auto_clear_speed'].effect(state.upgrades.auto_clear_speed);
   const tilesPerTick = UPGRADE_MAP['auto_clear'].effect(clearLevel);
-  const botCount     = state.upgrades.auto_clear_speed > 0
-    ? getBotCount('auto_clear_speed')
-    : 1;
+  const botCount     = state.upgrades.auto_clear_speed > 0 ? getBotCount('auto_clear_speed') : 1;
 
   for (let bot = 0; bot < botCount; bot++) {
     const t = setInterval(() => {
@@ -145,34 +153,39 @@ export function startAutoClearTimer() {
         return;
       }
       if (!boardInitialized) return;
+      if (safeTileIndex.size === 0) return;
 
-      const safe = getSafeTiles(tiles, state.rows, state.cols);
-      if (safe.length === 0) return;
+      const cols = state.cols;
+      const rows = state.rows;
 
-      // Sort safe tiles by proximity to last cleared position so bots
-      // expand outward from where they last worked.
-      let candidates = safe;
-      if (botLastClearPos) {
-        const [lr, lc] = botLastClearPos;
-        candidates = [...safe].sort((a, b) => {
-          const da = Math.abs(a[0] - lr) + Math.abs(a[1] - lc);
-          const db = Math.abs(b[0] - lr) + Math.abs(b[1] - lc);
-          return da - db;
-        });
+      // Get the nearest safe tiles to the last cleared position.
+      // getNearestSafeTiles uses an expanding radius search so it actually
+      // finds tiles spatially close to the frontier, not a random Set slice.
+      let candidates: [number, number][];
+      if (botLastClearKey >= 0) {
+        const lr = Math.floor(botLastClearKey / cols);
+        const lc = botLastClearKey % cols;
+        candidates = getNearestSafeTiles(lr, lc, rows, cols, tilesPerTick);
+      } else {
+        candidates = getSafeTilesFromIndex(cols, tilesPerTick);
       }
 
       let cleared = 0;
+      const dirtyCoords: [number, number][] = [];
       for (let i = 0; i < Math.min(tilesPerTick, candidates.length); i++) {
         const [r, c] = candidates[i];
         const revealed = floodReveal(tiles, r, c, state.rows, state.cols);
         if (revealed.length > 0) {
           cleared += revealed.length;
-          botLastClearPos = [r, c];
+          botLastClearKey = r * cols + c;
+          for (const [tr, tc] of revealed) dirtyCoords.push([tr, tc]);
         }
       }
 
       if (cleared > 0) {
         earnMoneyQuiet(cleared);
+        // Mark only changed tiles dirty instead of refreshAllTiles
+        for (const [tr, tc] of dirtyCoords) markTileDirty(tr, tc);
         checkWin();
         scheduleRender();
       }
@@ -182,7 +195,8 @@ export function startAutoClearTimer() {
   }
 }
 
-// ---- Auto-flag (supports multiple bots, random placement) ----
+// ---- Auto-flag ----
+// Uses index-based lookups and random sampling from the Set.
 
 export function startAutoFlagTimer() {
   stopAutoFlagTimers();
@@ -192,34 +206,39 @@ export function startAutoFlagTimer() {
 
   const interval     = UPGRADE_MAP['auto_flag_speed'].effect(state.upgrades.auto_flag_speed);
   const flagsPerTick = UPGRADE_MAP['auto_flag'].effect(flagLevel);
-  const botCount     = state.upgrades.auto_flag_speed > 0
-    ? getBotCount('auto_flag_speed')
-    : 1;
+  const botCount     = state.upgrades.auto_flag_speed > 0 ? getBotCount('auto_flag_speed') : 1;
 
   for (let bot = 0; bot < botCount; bot++) {
     const t = setInterval(() => {
-      if (_getAutoMinerPaused()) return;
+      if (_getAutoFlaggerPaused()) return;
 
       if (state.phase === 'idle' || state.phase === 'won' || state.phase === 'lost') {
         if (bot === 0) autoStartBoard();
         return;
       }
       if (!boardInitialized) return;
+      if (mineTileIndex.size === 0) return;
 
-      const mines = getMineTiles(tiles, state.rows, state.cols);
-      if (mines.length === 0) return;
-
-      // Random flag placement — shuffle so bots don't always flag the same mines first
-      const shuffled = shuffleArray([...mines]);
+      const cols = state.cols;
+      const mines = getMineTilesFromIndex(cols, flagsPerTick * 4);
+      const shuffled = shuffleArray(mines).slice(0, flagsPerTick);
 
       let flagged = 0;
-      for (let i = 0; i < Math.min(flagsPerTick, shuffled.length); i++) {
-        tiles[shuffled[i][0]][shuffled[i][1]].isFlagged = true;
+      const dirtyCoords: [number, number][] = [];
+      for (const [r, c] of shuffled) {
+        const tile = tiles[r][c];
+        if (tile.isFlagged || tile.isRevealed) continue;
+        tile.isFlagged = true;
+        indexMarkFlagged(r * cols + c, tile.isMine);
         flagged++;
+        dirtyCoords.push([r, c]);
       }
 
       if (flagged > 0) {
         earnMoneyQuiet(flagged);
+        for (const [tr, tc] of dirtyCoords) markTileDirty(tr, tc);
+        // Win condition now requires all mines flagged — check after each flag batch
+        checkWin();
         scheduleRender();
       }
     }, interval);

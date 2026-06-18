@@ -1,8 +1,8 @@
 import { state, tiles, boardInitialized, setTiles, setBoardInitialized } from '../state/state';
-import { createBoard, floodReveal, isBoardWon } from '../board/board';
+import { createBoard, floodReveal, isBoardWon, toggleFlag } from '../board/board';
 import { UPGRADE_MAP } from '../upgrades/upgrades';
 import { formatMoney } from '../state/save';
-import { renderBoard, refreshTile, getTileEl } from '../ui/renderer';
+import { renderBoard, refreshTile, getTileEl, drawCanvasFull, markTileDirty } from '../ui/renderer';
 import { updateMineCounter, updateHUD, updatePrestigeBar, showToast, setSmiley } from '../ui/hud';
 import { calcTileEarnings, earnMoney } from './money';
 import { startGameTimer, stopGameTimer, setBoardTransitioning } from './timers';
@@ -27,7 +27,7 @@ export function onTileClick(r: number, c: number) {
 
   if (_getFlagMode()) {
     if (!boardInitialized) return;
-    tile.isFlagged = !tile.isFlagged;
+    toggleFlag(tiles, r, c, state.cols);
     refreshTile(r, c);
     updateMineCounter();
     return;
@@ -62,7 +62,7 @@ export function onTileRightClick(r: number, c: number) {
   const tile = tiles[r][c];
   if (tile.isRevealed) return;
 
-  tile.isFlagged = !tile.isFlagged;
+  toggleFlag(tiles, r, c, state.cols);
   refreshTile(r, c);
   updateMineCounter();
 }
@@ -85,10 +85,14 @@ function hitMine(r: number, c: number) {
           el.classList.add('revealed');
           el.textContent = EMOJI_MINE;
           if (tr === r && tc === c) el.classList.add('mine-hit');
+        } else {
+          markTileDirty(tr, tc);
         }
       }
     }
   }
+  // Flush all dirty mine tiles at once
+  drawCanvasFull();
 
   showToast(`${EMOJI_BOOM} BOOM! Try again!`);
   setBoardTransitioning(true);
