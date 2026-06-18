@@ -1,7 +1,7 @@
 import { state, setTiles, setBoardInitialized, resetState } from '../state/state';
 import { cacheDomRefs, smileyBtn, prestigeBtn } from '../ui/dom';
 import { UPGRADE_MAP } from '../upgrades/upgrades';
-import { renderBoard, setTileHandlers } from '../ui/renderer';
+import { renderBoard, setTileHandlers, drawCanvasFull } from '../ui/renderer';
 import { onTileClick, onTileRightClick, setFlagModeGetter, setNewGameCallback } from './input';
 import { updateMineCounter, updateTimerDisplay, updateHUD, updatePrestigeBar } from '../ui/hud';
 import { updateUpgradesAffordability, renderUpgrades, setAutoMinerPausedGetterForUpgrades } from '../upgrades/upgrades-ui';
@@ -114,6 +114,7 @@ function initTabs() {
 
     if (name === 'board') {
       requestAnimationFrame(() => {
+        drawCanvasFull()
         squareBoardContainer();
         autoFitZoom();
       });
