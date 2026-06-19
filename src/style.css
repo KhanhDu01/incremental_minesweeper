@@ -233,6 +233,9 @@ body {
   border-bottom: 3px solid var(--shadow-light);
   border-right: 3px solid var(--shadow-light);
   box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 #board {

@@ -41,7 +41,7 @@ export function setSmiley(emoji: string) {
 
 export function updatePrestigeBar() {
   // Prestige is now based on TOTAL boards cleared (never resets)
-  const earned = calcPrestigeLevelsForBoards(state.totalBoardsCleared);
+  const earned = calcPrestigeLevelsForBoards(state.boardsCleared);
   const canP   = earned > state.prestigeCount;
 
   const thresholds = CONFIG.PRESTIGE_THRESHOLDS;
@@ -49,7 +49,7 @@ export function updatePrestigeBar() {
   let nextLevels    = thresholds[thresholds.length - 1][1];
 
   for (const [req, lvls] of thresholds) {
-    if (state.totalBoardsCleared < req) {
+    if (state.boardsCleared < req) {
       nextThreshold = req;
       nextLevels    = lvls;
       break;
@@ -72,14 +72,14 @@ export function updatePrestigeBar() {
   }
 
   // Progress bar toward next threshold (based on total boards)
-  const pct = Math.min(100, (state.totalBoardsCleared / nextThreshold) * 100);
+  const pct = Math.min(100, (state.boardsCleared / nextThreshold) * 100);
   progressBar.style.width = `${pct}%`;
 
   const prestigeText = state.prestigeCount > 0
     ? ` · ${EMOJI_PRESTIGE}${state.prestigeCount} · x${state.prestigeMultiplier.toFixed(1)}`
     : '';
   progressLabel.textContent =
-    `Board ${state.boardNumber}${prestigeText} | ${state.totalBoardsCleared}/${nextThreshold} (→+${nextLevels}✨)`;
+    `Board ${state.boardNumber}${prestigeText} | ${state.boardsCleared}/${nextThreshold} (→+${nextLevels}✨)`;
 }
 
 export function showToast(msg: string) {

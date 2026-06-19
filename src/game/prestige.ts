@@ -13,7 +13,7 @@ import { EMOJI_PRESTIGE } from '../assets/index';
 // ============================================================
 
 export function prestigeLevelsEarned(): number {
-  return calcPrestigeLevelsForBoards(state.totalBoardsCleared);
+  return calcPrestigeLevelsForBoards(state.boardsCleared);
 }
 
 export function canPrestige(): boolean {

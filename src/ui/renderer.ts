@@ -231,15 +231,35 @@ export function drawCanvasFull() {
 }
 
 export function flushDirtyTiles() {
-  if (!canvasEl || !canvasCtx) return;
-  if (fullRedrawPending) { drawCanvasFull(); return; }
-  if (dirtyKeys.size === 0) return;
-  const px   = canvasPx;
+  if (dirtyKeys.size === 0 && !fullRedrawPending) return;
+
+  if (usingCanvas) {
+    if (!canvasEl || !canvasCtx) { dirtyKeys.clear(); fullRedrawPending = false; return; }
+    if (fullRedrawPending) { drawCanvasFull(); return; }
+    const px   = canvasPx;
+    const cols = state.cols;
+    for (const key of dirtyKeys) {
+      const r = Math.floor(key / cols);
+      const c = key % cols;
+      drawTileToCanvas(canvasCtx, r, c, px);
+    }
+    dirtyKeys.clear();
+    return;
+  }
+
+  // DOM mode — paint each dirty tile's element directly.
   const cols = state.cols;
+  if (fullRedrawPending) {
+    refreshAllTiles();
+    dirtyKeys.clear();
+    fullRedrawPending = false;
+    return;
+  }
   for (const key of dirtyKeys) {
     const r = Math.floor(key / cols);
     const c = key % cols;
-    drawTileToCanvas(canvasCtx, r, c, px);
+    const el = getTileEl(r, c);
+    if (el) updateTileElement(el, tiles[r][c]);
   }
   dirtyKeys.clear();
 }

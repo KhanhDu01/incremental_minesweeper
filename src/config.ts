@@ -86,10 +86,10 @@ export function getEffectiveMaxLevel(_prestigeCount: number): number {
  * How many prestige levels should be earned for a given TOTAL boards-cleared count?
  * Uses totalBoardsCleared (never resets) instead of per-prestige boardsCleared.
  */
-export function calcPrestigeLevelsForBoards(totalBoardsCleared: number): number {
+export function calcPrestigeLevelsForBoards(boardsCleared: number): number {
   let total = 0;
   for (const [req, lvls] of CONFIG.PRESTIGE_THRESHOLDS) {
-    if (totalBoardsCleared >= req) total = lvls;
+    if (boardsCleared >= req) total = lvls;
   }
   return total;
 }
