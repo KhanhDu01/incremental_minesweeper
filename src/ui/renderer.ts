@@ -22,6 +22,11 @@ let canvasEl: HTMLCanvasElement | null = null;
 let canvasCtx: CanvasRenderingContext2D | null = null;
 let canvasPx = 1; // current tile pixel size on canvas
 
+// Tracks the last tile px we actually rendered DOM tiles at, so resizeCanvas
+// can skip a full rebuild when nothing actually changed (e.g. repeated calls
+// from tab-switch / window-resize handlers that fire even when zoom didn't).
+let lastDomTilePx = -1;
+
 // ---- Dirty-region tracking for partial redraws ----
 let dirtyKeys = new Set<number>(); // encoded as r * cols + c
 let fullRedrawPending = false;
@@ -62,6 +67,7 @@ export function renderBoard() {
     renderCanvas(rows, cols, tileSize);
   } else {
     renderDom(rows, cols, tileSize);
+    lastDomTilePx = tileSize;
   }
 }
 
@@ -94,13 +100,16 @@ function renderCanvas(rows: number, cols: number, tileSize: number) {
 }
 
 /**
- * Called by applyZoom whenever tile-size changes while in canvas mode.
- * Resizes the canvas buffer in-place and redraws — no DOM listener churn.
- * For DOM mode, renderBoard() is called instead (tile divs must be re-measured).
+ * Called by applyZoom whenever tile-size changes.
+ * Canvas mode: resizes the canvas buffer in-place and redraws — no element churn.
+ * DOM mode: only rebuilds tile elements if the pixel size actually changed,
+ * since unconditionally calling renderBoard() here would wipe and recreate
+ * every tile div (losing click listeners momentarily) on every tab switch.
  */
 export function resizeCanvas(newTilePx: number) {
   if (!usingCanvas) {
-    // DOM mode: just re-render (tile size change is already applied via CSS var)
+    if (newTilePx === lastDomTilePx) return; // no-op, nothing actually changed
+    lastDomTilePx = newTilePx;
     renderBoard();
     return;
   }
@@ -290,9 +299,18 @@ export function getTileEl(r: number, c: number): HTMLElement | null {
   return boardEl.querySelector(`[data-r="${r}"][data-c="${c}"]`);
 }
 
+/**
+ * Immediately paints a single tile's current state.
+ * In canvas mode this draws directly (not just marking dirty) so player
+ * clicks feel instant rather than waiting for the next batched bot flush.
+ * Bots that want batching should use markTileDirty() + flushDirtyTiles()
+ * themselves (see timers.ts) instead of calling this per-tile in a loop.
+ */
 export function refreshTile(r: number, c: number) {
   if (usingCanvas) {
-    markTileDirty(r, c);
+    if (canvasCtx) {
+      drawTileToCanvas(canvasCtx, r, c, canvasPx);
+    }
     return;
   }
   const el = getTileEl(r, c);

@@ -37,21 +37,34 @@ export function setAutoFlaggerPausedGetter(fn: () => boolean) { _getAutoFlaggerP
 // scheduleRender now uses partial redraws via flushDirtyTiles.
 // updateUpgradesAffordability re-renders every upgrade card — expensive.
 // We throttle it to at most once every 500ms to avoid UI lockup at high bot speeds.
+//
+// IMPORTANT: requestAnimationFrame can be throttled/paused by the browser for
+// content inside a display:none ancestor (e.g. the board tab while the
+// Upgrades/Achievements tab is active). That caused bot updates to silently
+// stop landing until something else (like a tab switch) forced a new frame.
+// We drive the actual flush with setTimeout — which keeps firing regardless
+// of tab visibility — and use rAF only as a best-effort paint hint when the
+// board tab happens to be visible.
 let lastAffordabilityUpdate = 0;
+
+function flushRender() {
+  renderPending = false;
+  updateMineCounter();
+  updateHUD();
+  const now = Date.now();
+  if (now - lastAffordabilityUpdate > 500) {
+    lastAffordabilityUpdate = now;
+    updateUpgradesAffordability();
+  }
+  flushDirtyTiles(); // only redraws changed tiles
+}
+
 export function scheduleRender() {
   if (renderPending) return;
   renderPending = true;
-  requestAnimationFrame(() => {
-    renderPending = false;
-    updateMineCounter();
-    updateHUD();
-    const now = Date.now();
-    if (now - lastAffordabilityUpdate > 500) {
-      lastAffordabilityUpdate = now;
-      updateUpgradesAffordability();
-    }
-    flushDirtyTiles(); // only redraws changed tiles
-  });
+  // setTimeout(0) is not subject to the same visibility-based throttling
+  // that requestAnimationFrame can receive inside hidden tab panels.
+  setTimeout(flushRender, 0);
 }
 
 // ---- Game countdown ----
